@@ -11,10 +11,13 @@ var globule = require('globule');
 var _varsToRemove = ['__decorate', '__metadata', 'angular2_1'];
 
 function rewrite(source) {
+  // HACK: The dummy var is needed to work around the following recast issue.
+  // https://github.com/benjamn/recast/issues/191
   var dummy = '\nvar __dummy;';
   var ast = recast.parse(source + dummy);
   visit(ast);
   var output = recast.print(ast).code;
+  // remove the sourceMappingURL line from the output.
   output = output.replace(/(?:\r\n|\r|\n).*sourceMappingURL=.*/, '');
   output = output.replace(/(?:\r\n|\r|\n).*var __dummy.*/, '');
   return output;
@@ -220,6 +223,8 @@ function buildIIFE(node) {
   );
   return iife;
 }
+
+// not currently used
 function fixBodyComments(body) {
   var lastNode = body[body.length - 1];
   if (!lastNode.comments) return;

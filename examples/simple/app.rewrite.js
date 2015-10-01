@@ -1,4 +1,5 @@
 (function() {
+    var foo = 'test';
     var AppComponent = ng.Component({
         selector: 'my-app'
     }).View({

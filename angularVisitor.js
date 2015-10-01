@@ -45,13 +45,14 @@ function visit(ast) {
 
   var context = {
     funcMap: {},
-    ngMap: {}
+    ngMap: {},
+    scopeChain: []
   };
 
   astTypes.visit(ast, {
     visitProgram: function(path) {
       var node = path.node;
-      this.traverse(path);
+      scopeTraverse(this, path, context);
       var body = node.body;
       var iife = buildIIFE(body);
       node.body = [iife];
@@ -63,14 +64,17 @@ function visit(ast) {
       pruneEmptyDeclarations(path);
     },
     visitVariableDeclarator: function(path) {
+      var node = path.node;
+      addToCurrentScope(path, context);
+      console.log(printScope(context));
       this.traverse(path);
     },
     visitFunctionDeclaration: function(path) {
       capturePossibleCtors(path, context);
-      this.traverse(path);
+      scopeTraverse(this, path, context);
     },
     visitFunctionExpression: function(path) {
-      this.traverse(path);
+      scopeTraverse(this, path, context);
     },
     visitCallExpression: function(path) {
       var node = path.node;
@@ -222,6 +226,49 @@ function buildIIFE(node) {
     )
   );
   return iife;
+}
+
+function scopeTraverse(ast, path, context) {
+  context.scopeChain.push( { path: path, vars: {} });
+  ast.traverse(path);
+  var currentScope = context.scopeChain.pop();
+}
+
+function addToCurrentScope(vdPath, context) {
+  var scopeChain = context.scopeChain;
+  var currentScope = scopeChain[scopeChain.length - 1];
+  var node = vdPath.node;
+  currentScope.vars[node.id.name] = vdPath;
+}
+
+
+function printScope(context){
+  var result = [];
+  context.scopeChain.forEach(function(scope) {
+    var node = scope.path.node;
+    var r;
+    if (node.type === 'Program'){
+      r = 'global scope:';
+    } else if (node.id && node.id.name){
+      r = 'function(' + node.id.name + ')';
+    } else {
+      r = 'anon function'
+    }
+    var vars = _.keys(scope.vars).join(',');
+    result.push(r + ": " + vars);
+  });
+  return result.join('\n');
+}
+
+function getVarDef(varname, scopeChain){
+  for (var i = 0; i < scopeChain.length; i++){
+    var scope = scopeChain[i];
+    var varDef = scope[varName];
+    if (varDef) {
+      return varDef;
+    }
+  }
+  return null;
 }
 
 // not currently used

@@ -1,5 +1,7 @@
 import {Component, View, bootstrap} from 'angular2/angular2';
 
+var foo = 'test';
+
 @Component({
   selector: 'my-app'
 })

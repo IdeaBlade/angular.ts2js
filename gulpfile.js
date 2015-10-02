@@ -21,7 +21,7 @@ gulp.task('help', taskListing.withFilters(function(taskName) {
 }));
 
 // if no args - compiles and rewrites all ts files in the examples/simple dir
-// if -f value ends in '.ts' then compiles all ts files and rewrites just the js version of the file specified.
+// if -f value ends in '.ts' then compiles and rewrites the ts file specified.
 // if -f value ends in '.js' then just rewrites the js file.
 gulp.task('rewrite', function() {
   var filePath = argv.file || argv.f || 'simple';
@@ -31,19 +31,16 @@ gulp.task('rewrite', function() {
     console.log('unable to locate file or folder: ' + filePath);
     return;
   }
-  var dirName = path.dirname(filePath);
+
   var extName = path.extname(filePath);
-  if (extName == '.ts') {
-    // convert to .js
-    filePath = path.join(dirName, path.basename(filePath, '.ts') + '.js');
-  }
 
   if (fstat.isDirectory() || extName == '.ts') {
-    var folderPath = fstat.isDirectory() ? filePath : dirName;
-    tscCompile(folderPath).then(function () {
-      rewrite(filePath);
+    var jsPath = fstat.isDirectory() ? filePath : changeExtn(filePath, '.js');
+    tscCompile(filePath).then(function () {
+      rewrite(jsPath);
     }).catch(function () {
-      rewrite(filePath);
+      // most tscCompile errs are not actually fatal.
+      rewrite(jsPath);
     })
   } else if (extName == '.js') {
     rewrite(filePath);
@@ -53,15 +50,27 @@ gulp.task('rewrite', function() {
 
 });
 
-function tscCompile(folderPath) {
-  var tsProject = tsc.createProject(path.join(folderPath, 'tsconfig.json'));
-  var tsResult = gulp.src(path.join(folderPath, '/*.ts'))
-    .pipe(tsc(tsProject));
+function tscCompile(filePath) {
+  var fstat = fs.lstatSync(filePath);
+  var folderPath, options, srcGlob;
+  if (fstat.isDirectory()) {
+    folderPath = filePath;
+    options = {};
+    srcGlob = path.join(folderPath, '*.ts');
+  } else {
+    folderPath = path.dirname(filePath);
+    options = { files: [ filePath] };
+    srcGlob = filePath;
+  }
+
+  var tsProject = tsc.createProject(path.join(folderPath, 'tsconfig.json'), options );
+  var tsResult = gulp.src(srcGlob)
+    .pipe(tsc(tsProject))
+    .pipe(gulp.dest(folderPath));
   return streamToPromise(tsResult);
 }
 
 function rewrite(filePath) {
-
   var isDir = fs.lstatSync(filePath).isDirectory();
 
   if (isDir) {
@@ -78,6 +87,13 @@ function fileStats(filePath) {
   } catch (err) {
     return null;
   }
+}
+
+function changeExtn(filePath, newExtn) {
+  if (newExtn.indexOf(".") < 0) {
+    newExtn = "." + newExtn;
+  }
+  return path.join(path.dirname(filePath), path.basename(filePath, path.extname(filePath)) + newExtn);
 }
 
 gulp.task('default', ['help']);

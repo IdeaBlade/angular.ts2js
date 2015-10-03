@@ -22,7 +22,7 @@ gulp.task('help', taskListing.withFilters(function(taskName) {
 
 // if no args - compiles and rewrites all ts files in the examples/simple dir
 // if -f value ends in '.ts' then compiles and rewrites the ts file specified.
-// if -f value ends in '.js' then just rewrites the js file.
+// if -f value ends in '.js' then just rewrites the js file specified.
 gulp.task('rewrite', function() {
   var filePath = argv.file || argv.f || 'simple';
   filePath = path.join('examples', filePath);

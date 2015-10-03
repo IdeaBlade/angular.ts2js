@@ -46,7 +46,8 @@ function visit(ast) {
   var context = {
     funcMap: {},
     ngMap: {},
-    scopeChain: []
+    scopeChain: [],
+    blockMap: {}
   };
 
   astTypes.visit(ast, {
@@ -54,14 +55,15 @@ function visit(ast) {
       var node = path.node;
       scopeTraverse(this, path, context);
       var body = node.body;
-      var iife = buildIIFE(body);
-      node.body = [iife];
+      //var iife = buildIIFE(body);
+      //node.body = [iife];
     },
     visitVariableDeclaration: function(path) {
       removeExtraneousVars(path);
       this.traverse(path);
       transformNgDeclarations(path, context);
       pruneEmptyDeclarations(path);
+      return false;
     },
     visitVariableDeclarator: function(path) {
       var node = path.node;
@@ -112,10 +114,19 @@ function capturePossibleCtors(fdPath, context) {
 function transformNgDeclarations(vdPath, context) {
   var declarations = vdPath.node.declarations;
   declarations.forEach(function(declaration) {
-    var ngExpr = context.ngMap[declaration.id.name];
-    if (ngExpr) {
-      declaration.init = ngExpr;
+    var ngInfo = context.ngMap[declaration.id.name];
+    if (ngInfo) {
+      declaration.init = ngInfo.ngCall;
+      var statements = ngInfo.block.node.body;
+      statements.forEach(function(statement) {
+        if (statement.type === 'ReturnStatement') return;
+        if (statement.expression === ngInfo.cePath.parent.node) return;
+        vdPath.insertAfter(statement);
+
+      });
     }
+
+
   });
 }
 
@@ -168,21 +179,21 @@ function transformDecorateCall(cePath, context) {
     }
   });
   var b = astTypes.builders;
-  var obj = b.identifier('ng');
+  var ngCall = b.identifier('ng');
 
   decorators.elements.forEach(function(decorator) {
-    obj = b.callExpression(
+    ngCall = b.callExpression(
       b.memberExpression(
-        obj,
+        ngCall,
         decorator.callee.property
       ),
       decorator.arguments
     )
   });
   if (ctorFunc) {
-    obj = b.callExpression(
+    ngCall = b.callExpression(
       b.memberExpression(
-        obj,
+        ngCall,
         b.identifier('Class')
       ),
       [ b.objectExpression( [
@@ -195,9 +206,22 @@ function transformDecorateCall(cePath, context) {
     )
     pruneButKeepComments(ctorFunc);
   }
-  cePath.replace(obj);
-  context.ngMap[assignNode.name] = obj;
+  cePath.replace(ngCall);
+  // identify parent and make cePath the first child of the parent
+  var parentBlock = getParentOfType(cePath,'BlockStatement');
+  context.ngMap[assignNode.name] = { cePath: cePath, ngCall: ngCall, block: parentBlock };
 
+}
+
+function getParentOfType(path, type) {
+  var nextParent = path.parent;
+  while (nextParent.node.type !== type) {
+    nextParent = nextParent.parent;
+    if (nextParent == null) {
+      return null;
+    }
+  }
+  return nextParent;
 }
 
 // return the identifier on the left side of a callExpression if any.
@@ -229,18 +253,21 @@ function buildIIFE(node) {
 }
 
 function scopeTraverse(ast, path, context) {
-  context.scopeChain.push( { path: path, vars: {} });
+  context.scopeChain.push( { path: path, vars: {}, body: path.node.body });
   ast.traverse(path);
   var currentScope = context.scopeChain.pop();
 }
 
 function addToCurrentScope(vdPath, context) {
-  var scopeChain = context.scopeChain;
-  var currentScope = scopeChain[scopeChain.length - 1];
+  var currentScope = getCurrentScope(context);
   var node = vdPath.node;
   currentScope.vars[node.id.name] = vdPath;
 }
 
+function getCurrentScope(context) {
+  var scopeChain = context.scopeChain;
+  return scopeChain[scopeChain.length - 1];
+}
 
 function printScope(context){
   var result = [];

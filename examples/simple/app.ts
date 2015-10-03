@@ -14,6 +14,14 @@ class AppComponent {
   constructor() {
     this.name = 'Alice';
   }
+
+  doFoo(arg1: String) {
+    return arg1;
+  }
+
+  doBar(arg2: Number) {
+    return arg2;
+  }
 }
 
 bootstrap(AppComponent);

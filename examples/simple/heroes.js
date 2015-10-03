@@ -50,4 +50,3 @@ var HeroesComponent = (function () {
     var _a, _b;
 })();
 exports.HeroesComponent = HeroesComponent;
-//# sourceMappingURL=heroes.js.map

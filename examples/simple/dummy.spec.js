@@ -4,4 +4,3 @@ describe("Jasmine sample test", function () {
         expect(result).toBe(2);
     });
 });
-//# sourceMappingURL=dummy.spec.js.map

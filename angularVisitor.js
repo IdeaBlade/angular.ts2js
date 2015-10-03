@@ -117,16 +117,9 @@ function transformNgDeclarations(vdPath, context) {
     var ngInfo = context.ngMap[declaration.id.name];
     if (ngInfo) {
       declaration.init = ngInfo.ngCall;
-      var statements = ngInfo.block.node.body;
-      statements.forEach(function(statement) {
-        if (statement.type === 'ReturnStatement') return;
-        if (statement.expression === ngInfo.cePath.parent.node) return;
-        vdPath.insertAfter(statement);
-
-      });
+      // because we can't do vdPath.insertAfter(ngInfo.statements)
+      vdPath.insertAfter.apply(vdPath, ngInfo.statements);
     }
-
-
   });
 }
 
@@ -209,7 +202,19 @@ function transformDecorateCall(cePath, context) {
   cePath.replace(ngCall);
   // identify parent and make cePath the first child of the parent
   var parentBlock = getParentOfType(cePath,'BlockStatement');
-  context.ngMap[assignNode.name] = { cePath: cePath, ngCall: ngCall, block: parentBlock };
+  var statements = parentBlock.node.body;
+  var hasReturned = false;
+  statements = statements.filter(function(statement) {
+    if (hasReturned || statement.type === 'ReturnStatement') {
+      // ts will sometimes generate variable declaration statements after the return statement
+      // these can be ignored.
+      hasReturned = true;
+      return false;
+    }
+    if (statement.expression === cePath.parent.node) return false;
+    return true;
+  });
+  context.ngMap[assignNode.name] = { ngCall: ngCall, statements: statements };
 
 }
 

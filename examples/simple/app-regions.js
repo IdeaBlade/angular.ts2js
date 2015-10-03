@@ -35,4 +35,3 @@ var AppComponent = (function () {
 angular2_1.bootstrap(AppComponent);
 // #enddocregion bootstrap
 // #enddocregion 
-//# sourceMappingURL=app-regions.js.map

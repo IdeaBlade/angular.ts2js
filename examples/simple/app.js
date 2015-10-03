@@ -15,6 +15,12 @@ var AppComponent = (function () {
     function AppComponent() {
         this.name = 'Alice';
     }
+    AppComponent.prototype.doFoo = function (arg1) {
+        return arg1;
+    };
+    AppComponent.prototype.doBar = function (arg2) {
+        return arg2;
+    };
     AppComponent = __decorate([
         angular2_1.Component({
             selector: 'my-app'
@@ -27,4 +33,3 @@ var AppComponent = (function () {
     return AppComponent;
 })();
 angular2_1.bootstrap(AppComponent);
-//# sourceMappingURL=app.js.map

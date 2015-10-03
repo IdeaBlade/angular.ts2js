@@ -62,7 +62,10 @@ function tscCompile(filePath) {
     options = { files: [ filePath] };
     srcGlob = filePath;
   }
-
+  // options.module = "commonjs";
+  // options.module = "amd";
+  // options.module = "umd";
+  // options.module = "system";
   var tsProject = tsc.createProject(path.join(folderPath, 'tsconfig.json'), options );
   var tsResult = gulp.src(srcGlob)
     .pipe(tsc(tsProject))

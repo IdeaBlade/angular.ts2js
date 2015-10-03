@@ -55,8 +55,8 @@ function visit(ast) {
       var node = path.node;
       scopeTraverse(this, path, context);
       var body = node.body;
-      //var iife = buildIIFE(body);
-      //node.body = [iife];
+      var iife = buildIIFE(body);
+      node.body = [iife];
     },
     visitVariableDeclaration: function(path) {
       removeExtraneousVars(path);
@@ -68,7 +68,7 @@ function visit(ast) {
     visitVariableDeclarator: function(path) {
       var node = path.node;
       addToCurrentScope(path, context);
-      console.log(printScope(context));
+      // console.log(printScope(context));
       this.traverse(path);
     },
     visitFunctionDeclaration: function(path) {

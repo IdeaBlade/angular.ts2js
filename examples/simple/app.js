@@ -12,7 +12,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var angular2_1 = require('angular2/angular2');
 var foo = 'test';
 var AppComponent = (function () {
-    function AppComponent() {
+    function AppComponent(arg0) {
+        this.foo = arg0;
         this.name = 'Alice';
     }
     AppComponent.prototype.doFoo = function (arg1) {
@@ -28,7 +29,7 @@ var AppComponent = (function () {
         angular2_1.View({
             template: '<h1 id="output">My First Angular 2 App yyy</h1>'
         }), 
-        __metadata('design:paramtypes', [])
+        __metadata('design:paramtypes', [String])
     ], AppComponent);
     return AppComponent;
 })();

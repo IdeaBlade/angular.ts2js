@@ -193,7 +193,7 @@ function transformDecorateCall(cePath, context) {
           b.property(
             'init',
             b.identifier('constructor'),
-            b.functionExpression(null, [], ctorFunc.node.body)
+            b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body)
           )]
       )]
     )

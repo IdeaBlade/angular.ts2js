@@ -8,7 +8,7 @@
         directives: [constants_1.COMMON_DIRECTIVES],
         styleUrls: ['app/heroes.component.css']
     }).Class({
-        constructor: function() {
+        constructor: function(_heroService, _router) {
             this._heroService = _heroService;
             this._router = _router;
         }

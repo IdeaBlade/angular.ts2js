@@ -10,8 +10,10 @@ var foo = 'test';
 })
 class AppComponent {
   name : string;
+  foo: string;
 
-  constructor() {
+  constructor(arg0: String) {
+    this.foo = arg0;
     this.name = 'Alice';
   }
 

@@ -62,13 +62,21 @@ function tscCompile(filePath) {
     options = { files: [ filePath] };
     srcGlob = filePath;
   }
-  options.module = "commonjs";
+
+  var options = {
+    "target": "ES5",
+    "module": "commonjs",
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "removeComments": false
+  };
+  // options.module = "commonjs";
   // options.module = "amd";
   // options.module = "umd";
   // options.module = "system";
-  var tsProject = tsc.createProject(path.join(folderPath, 'tsconfig.json'), options );
   var tsResult = gulp.src(srcGlob)
-    .pipe(tsc(tsProject))
+    .pipe(tsc(options))
     .pipe(gulp.dest(folderPath));
   return streamToPromise(tsResult);
 }

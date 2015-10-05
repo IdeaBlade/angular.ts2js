@@ -8,7 +8,11 @@ var fs = require('fs');
 var path = require('canonical-path');
 var globule = require('globule');
 
-var _varsToRemove = ['__decorate', '__metadata', 'angular2_1'];
+var _varsToRemove = ['__decorate', '__metadata' ];
+var _varNameMap = {
+  'angular2_1': 'ng',
+  'test_lib': 'testLib'
+};
 
 function rewrite(source) {
   // HACK: The dummy var is needed to work around the following recast issue.
@@ -45,10 +49,12 @@ function visit(ast) {
 
   var context = {
     funcMap: {},
-    ngMap: {},
+    ngMap: { },
+    varMap: {},
     scopeChain: [],
-    blockMap: {}
   };
+
+  context.varMap["angular2_1"] = 'ng';
 
   astTypes.visit(ast, {
     visitProgram: function(path) {
@@ -59,16 +65,18 @@ function visit(ast) {
       node.body = [iife];
     },
     visitVariableDeclaration: function(path) {
-      removeExtraneousVars(path);
-      this.traverse(path);
-      transformNgDeclarations(path, context);
+      removeExtraneousDeclarations(path);
+      var rNode = this.traverse(path);
+      if (rNode == null) {
+        // path was removed during traverse call above.
+        return false;
+      }
+      collapseNgDeclarations(path, context);
       pruneEmptyDeclarations(path);
       return false;
     },
     visitVariableDeclarator: function(path) {
-      var node = path.node;
       addToCurrentScope(path, context);
-      // console.log(printScope(context));
       this.traverse(path);
     },
     visitFunctionDeclaration: function(path) {
@@ -83,21 +91,40 @@ function visit(ast) {
       if (node.callee.name === '__decorate') {
         transformDecorateCall(path, context);
       }
+      if (node.callee.name === 'require') {
+        removeRequireCall(path, context);
+        return false;
+      }
       this.traverse(path);
     },
     visitMemberExpression: function(path) {
-      changeAngularVarsToNg(path);
+      changeAngularVarsToNg(path, context);
+      this.traverse(path);
+    },
+    visitIdentifier: function(path) {
+      renameIdentifierIfNeeded(path, context);
       this.traverse(path);
     }
 
   });
 }
 
+function renameIdentifierIfNeeded(idPath, context) {
+  var node = idPath.node;
+  var newName = getMappedVarName(node.name, context);
+  if (newName) {
+    node.name = newName;
+  }
+}
+
 // change 'angular2_1' refs in any member expr to 'ng'
-function changeAngularVarsToNg(mePath) {
+function changeAngularVarsToNg(mePath, context) {
   var node = mePath.node;
-  if (node.object && node.object.type == 'Identifier' && node.object.name == 'angular2_1') {
-    node.object.name = 'ng';
+  if (node.object && node.object.type == 'Identifier') {
+    var newName = getMappedVarName(node.object.name, context);
+    if (newName) {
+      node.object.name = newName;
+    }
   }
 }
 
@@ -110,8 +137,18 @@ function capturePossibleCtors(fdPath, context) {
   }
 }
 
+// remove any variable declarations in the _varsToRemove list.
+function removeExtraneousDeclarations(vdPath) {
+  var node = vdPath.node;
+  var declarations = node.declarations;
+  _.remove(declarations, function(declaration) {
+    return _varsToRemove.indexOf(declaration.id.name) >= 0;
+  });
+}
+
 // assign variable declarations for decorated items to previously calculated ng DSL chain.
-function transformNgDeclarations(vdPath, context) {
+// relies on context.ngMap having been updated via transformDecorateCall.
+function collapseNgDeclarations(vdPath, context) {
   var declarations = vdPath.node.declarations;
   declarations.forEach(function(declaration) {
     var ngInfo = context.ngMap[declaration.id.name];
@@ -120,15 +157,6 @@ function transformNgDeclarations(vdPath, context) {
       // because we can't do vdPath.insertAfter(ngInfo.statements)
       vdPath.insertAfter.apply(vdPath, ngInfo.statements);
     }
-  });
-}
-
-// remove any variable declarations in the _varsToRemove list.
-function removeExtraneousVars(vdPath) {
-  var node = vdPath.node;
-  var declarations = node.declarations;
-  _.remove(declarations, function(declaration) {
-    return _varsToRemove.indexOf(declaration.id.name) >= 0;
   });
 }
 
@@ -149,6 +177,15 @@ function pruneButKeepComments(path) {
     Array.prototype.push.apply(parent.comments, node.comments);
   }
   path.prune();
+}
+
+function removeRequireCall(cePath, context) {
+  var assignNode = getAssignmentIdentifier(cePath);
+  if (!assignNode) return;
+  addMappedVarName(assignNode.name, context);
+  var vdPath = cePath.parent.parent;
+  pruneButKeepComments(vdPath);
+
 }
 
 // transform a __decorate call expression to use ng DSL call chain.
@@ -218,28 +255,45 @@ function transformDecorateCall(cePath, context) {
 
 }
 
-function getParentOfType(path, type) {
-  var nextParent = path.parent;
-  while (nextParent.node.type !== type) {
-    nextParent = nextParent.parent;
-    if (nextParent == null) {
+
+
+// return the identifier node on the left side of a callExpression if any.
+function getAssignmentIdentifier(cePath) {
+  var parent = cePath.parent.node;
+  if (parent.type === 'AssignmentExpression') {
+    if (parent.left.type !== 'Identifier') {
       return null;
     }
+    return parent.left;
+  } else if (parent.type === 'VariableDeclarator') {
+    return parent.id;
+  } else {
+    return null;
   }
-  return nextParent;
 }
 
-// return the identifier on the left side of a callExpression if any.
-function getAssignmentIdentifier(cePath) {
-  var parent = cePath.parent.value;
-  if (parent.type !== 'AssignmentExpression') {
-    return null;
+
+
+function addMappedVarName(varName, context) {
+  var newVarName = _varNameMap[varName];
+  if (!newVarName) {
+    if (varName.substr(varName.length - 2) == "_1") {
+      newVarName = varName.substr(0, varName.length - 2);
+    }
   }
-  if (parent.left.type !== 'Identifier') {
-    return null;
+  if (newVarName) {
+    context.varMap[varName] = newVarName;
   }
-  return parent.left;
 }
+
+function getMappedVarName(varName, context) {
+  var varNameMap = context.varMap;
+  // insure that we don't pull from prototype.
+  if (varNameMap.hasOwnProperty(varName)) {
+    return varNameMap[varName];
+  }
+}
+
 
 // build an IIFE around the specified node.
 function buildIIFE(node) {
@@ -304,29 +358,18 @@ function getVarDef(varname, scopeChain){
 }
 
 // not currently used
-function fixBodyComments(body) {
-  var lastNode = body[body.length - 1];
-  if (!lastNode.comments) return;
-
-  var comments = lastNode.comments;
-  var placeholder = astTypes.builders.emptyStatement();
-
-  placeholder.comments = [];
-  lastNode.comments = [];
-
-  comments.forEach(function (comment, idx) {
-    if (comment.trailing) {
-      placeholder.comments.push(comment);
-      comment.trailing = false;
-      comment.leading = true;
-    } else {
-      lastNode.comments.push(comment);
+function getParentOfType(path, type) {
+  var nextParent = path.parent;
+  while (nextParent.node.type !== type) {
+    nextParent = nextParent.parent;
+    if (nextParent == null) {
+      return null;
     }
-  });
-
-  body.push(placeholder);
+  }
+  return nextParent;
 }
 
+// inject '.rewrite.' into the fileName
 function getRewriteFileName(fileName) {
   var dirName = path.dirname(fileName);
   var extName = path.extname(fileName);
@@ -341,3 +384,27 @@ module.exports = {
   rewriteFile: rewriteFile,
   rewriteFolder: rewriteFolder
 };
+
+//// not currently used
+//function fixBodyComments(body) {
+//  var lastNode = body[body.length - 1];
+//  if (!lastNode.comments) return;
+//
+//  var comments = lastNode.comments;
+//  var placeholder = astTypes.builders.emptyStatement();
+//
+//  placeholder.comments = [];
+//  lastNode.comments = [];
+//
+//  comments.forEach(function (comment, idx) {
+//    if (comment.trailing) {
+//      placeholder.comments.push(comment);
+//      comment.trailing = false;
+//      comment.leading = true;
+//    } else {
+//      lastNode.comments.push(comment);
+//    }
+//  });
+//
+//  body.push(placeholder);
+//}

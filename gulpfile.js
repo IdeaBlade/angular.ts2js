@@ -62,7 +62,7 @@ function tscCompile(filePath) {
     options = { files: [ filePath] };
     srcGlob = filePath;
   }
-  // options.module = "commonjs";
+  options.module = "commonjs";
   // options.module = "amd";
   // options.module = "umd";
   // options.module = "system";

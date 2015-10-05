@@ -50,11 +50,9 @@ function visit(ast) {
   var context = {
     funcMap: {},
     ngMap: { },
-    varMap: {},
+    varNameMap: _.extend({}, _varNameMap),
     scopeChain: [],
   };
-
-  context.varMap["angular2_1"] = 'ng';
 
   astTypes.visit(ast, {
     visitProgram: function(path) {
@@ -98,7 +96,6 @@ function visit(ast) {
       this.traverse(path);
     },
     visitMemberExpression: function(path) {
-      changeAngularVarsToNg(path, context);
       this.traverse(path);
     },
     visitIdentifier: function(path) {
@@ -114,17 +111,6 @@ function renameIdentifierIfNeeded(idPath, context) {
   var newName = getMappedVarName(node.name, context);
   if (newName) {
     node.name = newName;
-  }
-}
-
-// change 'angular2_1' refs in any member expr to 'ng'
-function changeAngularVarsToNg(mePath, context) {
-  var node = mePath.node;
-  if (node.object && node.object.type == 'Identifier') {
-    var newName = getMappedVarName(node.object.name, context);
-    if (newName) {
-      node.object.name = newName;
-    }
   }
 }
 
@@ -185,7 +171,6 @@ function removeRequireCall(cePath, context) {
   addMappedVarName(assignNode.name, context);
   var vdPath = cePath.parent.parent;
   pruneButKeepComments(vdPath);
-
 }
 
 // transform a __decorate call expression to use ng DSL call chain.
@@ -209,7 +194,8 @@ function transformDecorateCall(cePath, context) {
     }
   });
   var b = astTypes.builders;
-  var ngCall = b.identifier('ng');
+  var ngName = getMappedVarName('angular2_1', context) || 'ng';
+  var ngCall = b.identifier(ngName);
 
   decorators.elements.forEach(function(decorator) {
     ngCall = b.callExpression(
@@ -255,8 +241,6 @@ function transformDecorateCall(cePath, context) {
 
 }
 
-
-
 // return the identifier node on the left side of a callExpression if any.
 function getAssignmentIdentifier(cePath) {
   var parent = cePath.parent.node;
@@ -273,7 +257,6 @@ function getAssignmentIdentifier(cePath) {
 }
 
 
-
 function addMappedVarName(varName, context) {
   var newVarName = _varNameMap[varName];
   if (!newVarName) {
@@ -282,12 +265,12 @@ function addMappedVarName(varName, context) {
     }
   }
   if (newVarName) {
-    context.varMap[varName] = newVarName;
+    context.varNameMap[varName] = newVarName;
   }
 }
 
 function getMappedVarName(varName, context) {
-  var varNameMap = context.varMap;
+  var varNameMap = context.varNameMap;
   // insure that we don't pull from prototype.
   if (varNameMap.hasOwnProperty(varName)) {
     return varNameMap[varName];

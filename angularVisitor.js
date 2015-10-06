@@ -90,7 +90,7 @@ function visit(ast) {
         transformDecorateCall(path, context);
       }
       if (node.callee.name === 'require') {
-        removeRequireCall(path, context);
+        processRequireCall(path, context);
         return false;
       }
       this.traverse(path);
@@ -165,12 +165,18 @@ function pruneButKeepComments(path) {
   path.prune();
 }
 
-function removeRequireCall(cePath, context) {
+function processRequireCall(cePath, context) {
   var assignNode = getAssignmentIdentifier(cePath);
+
   if (!assignNode) return;
-  addMappedVarName(assignNode.name, context);
+  // if the require statement starts with 'angular2/'  prefix the renamed variable with 'ng'
+  var isNgVar = cePath.node.arguments[0].value.indexOf('angular2/') === 0;
+  var newName = addMappedVarName(assignNode.name, isNgVar, context);
+  if (newName) {
+    assignNode.name = newName;
+  }
   var vdPath = cePath.parent.parent;
-  pruneButKeepComments(vdPath);
+  // pruneButKeepComments(vdPath);
 }
 
 // transform a __decorate call expression to use ng DSL call chain.
@@ -257,16 +263,25 @@ function getAssignmentIdentifier(cePath) {
 }
 
 
-function addMappedVarName(varName, context) {
+function addMappedVarName(varName, isNgVar, context) {
   var newVarName = _varNameMap[varName];
   if (!newVarName) {
+    newVarName = varName;
     if (varName.substr(varName.length - 2) == "_1") {
       newVarName = varName.substr(0, varName.length - 2);
+    }
+    if (isNgVar && varName !== 'ng' ) {
+      newVarName = 'ng' + capitalizeFirstLetter(newVarName);
     }
   }
   if (newVarName) {
     context.varNameMap[varName] = newVarName;
   }
+  return newVarName;
+}
+
+function capitalizeFirstLetter(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function getMappedVarName(varName, context) {

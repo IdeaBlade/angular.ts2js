@@ -1,0 +1,28 @@
+ {@Query} factory for creating annotations, decorators or DSL.
+
+ ## Example as TypeScript Decorator
+
+ ```
+ import {Query, QueryList, Component, View} from "angular2/angular2";
+
+ @Component({...})
+ @View({...})
+ class MyComponent {
+   constructor(@Query(SomeType) queryList: QueryList) {
+     ...
+   }
+ }
+ ```
+
+ ## Example as ES5 DSL
+
+ ```
+ var MyComponent = ng
+   .Component({...})
+   .View({...})
+   .Class({
+     constructor: [new ng.Query(SomeType), function(queryList) {
+       ...
+     }]
+   })
+ ```

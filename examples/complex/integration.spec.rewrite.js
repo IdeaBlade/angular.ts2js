@@ -3,20 +3,20 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var ngTest_lib = require('angular2/test_lib');
-var ngDom_adapter = require('angular2/src/core/dom/dom_adapter');
+var ngTestLib = require('angular2/test_lib');
+var ngDomAdapter = require('angular2/src/core/dom/dom_adapter');
 var ngLang = require('angular2/src/core/facade/lang');
 var ngExceptions = require('angular2/src/core/facade/exceptions');
 var ngAsync = require('angular2/src/core/facade/async');
 var ngCore = require('angular2/core');
-var ngChange_detection = require('angular2/src/core/change_detection/change_detection');
+var ngChangeDetection = require('angular2/src/core/change_detection/change_detection');
 var ngMetadata = require('angular2/src/core/metadata');
-var ngQuery_list = require('angular2/src/core/linker/query_list');
-var ngView_container_ref = require('angular2/src/core/linker/view_container_ref');
+var ngQueryList = require('angular2/src/core/linker/query_list');
+var ngViewContainerRef = require('angular2/src/core/linker/view_container_ref');
 var ngCompiler = require('angular2/src/core/linker/compiler');
-var ngElement_ref = require('angular2/src/core/linker/element_ref');
-var ngTemplate_ref = require('angular2/src/core/linker/template_ref');
-var ngDom_renderer = require('angular2/src/core/render/dom/dom_renderer');
+var ngElementRef = require('angular2/src/core/linker/element_ref');
+var ngTemplateRef = require('angular2/src/core/linker/template_ref');
+var ngDomRenderer = require('angular2/src/core/render/dom/dom_renderer');
 var ANCHOR_ELEMENT = ngLang.CONST_EXPR(new ngCore.OpaqueToken('AnchorElement'));
 function main() {
 }
@@ -29,7 +29,7 @@ var MyService = ng.Injectable().Class({
 var SimpleImperativeViewComponent = ng.Component({ selector: 'simple-imp-cmp' }).View({ template: '' }).Injectable().Class({
     constructor: function(self, renderer) {
         var hostElement = renderer.getNativeElementSync(self);
-        ngDom_adapter.DOM.appendChild(hostElement, ngTest_lib.el('hello imp view'));
+        ngDomAdapter.DOM.appendChild(hostElement, ngTestLib.el('hello imp view'));
     }
 });
 var DynamicViewport = ng.Directive({ selector: 'dynamic-vp' }).Injectable().Class({
@@ -55,7 +55,7 @@ var DirectiveWithTitleAndHostProperty = ng.Directive({ selector: '[title]', inpu
     }
 });
 var PushCmp = ng.Component(
-    { selector: 'push-cmp', inputs: ['prop'], changeDetection: ngChange_detection.ChangeDetectionStrategy.OnPush }
+    { selector: 'push-cmp', inputs: ['prop'], changeDetection: ngChangeDetection.ChangeDetectionStrategy.OnPush }
 ).View({ template: '{{field}}' }).Injectable().Class({
     constructor: function() {
         this.numberOfChecks = 0;
@@ -72,7 +72,7 @@ Object.defineProperty(PushCmp.prototype, "field", {
 var PushCmpWithRef = ng.Component({
     selector: 'push-cmp-with-ref',
     inputs: ['prop'],
-    changeDetection: ngChange_detection.ChangeDetectionStrategy.OnPush
+    changeDetection: ngChangeDetection.ChangeDetectionStrategy.OnPush
 }).View({ template: '{{field}}' }).Injectable().Class({
     constructor: function(ref) {
         this.numberOfChecks = 0;
@@ -89,7 +89,7 @@ Object.defineProperty(PushCmpWithRef.prototype, "field", {
 });
 PushCmpWithRef.prototype.propagate = function () { this.ref.markForCheck(); };
 var PushCmpWithAsyncPipe = ng.Component(
-    { selector: 'push-cmp-with-async', changeDetection: ngChange_detection.ChangeDetectionStrategy.OnPush }
+    { selector: 'push-cmp-with-async', changeDetection: ngChangeDetection.ChangeDetectionStrategy.OnPush }
 ).View({ template: '{{field | async}}' }).Injectable().Class({
     constructor: function() {
         this.numberOfChecks = 0;
@@ -269,7 +269,7 @@ var PrivateImpl = (ng.Directive({
 __extends(PrivateImpl, _super);
 var NeedsPublicApi = ng.Directive({ selector: '[needs-public-api]' }).Injectable().Class({
     constructor: [new ngCore.Host(), function(api) {
-        ngTest_lib.expect(api instanceof PrivateImpl).toBe(true);
+        ngTestLib.expect(api instanceof PrivateImpl).toBe(true);
     }]
 });
 var ToolbarPart = ng.Directive({ selector: '[toolbarpart]' }).Injectable().Class({
@@ -422,7 +422,7 @@ Object.defineProperty(SomeImperativeViewport.prototype, "someImpvp", {
             this.view = this.vc.createEmbeddedView(this.templateRef);
             var nodes = this.renderer.getRootNodes(this.view.renderFragment);
             for (var i = 0; i < nodes.length; i++) {
-                ngDom_adapter.DOM.appendChild(this.anchor, nodes[i]);
+                ngDomAdapter.DOM.appendChild(this.anchor, nodes[i]);
             }
         }
     },
@@ -439,12 +439,12 @@ var ComponentWithoutView = ng.Component({ selector: 'comp' }).Class({
 });
 var DuplicateDir = ng.Directive({ selector: '[no-duplicate]' }).Class({
     constructor: function(elRef) {
-        ngDom_adapter.DOM.setText(elRef.nativeElement, ngDom_adapter.DOM.getText(elRef.nativeElement) + 'noduplicate');
+        ngDomAdapter.DOM.setText(elRef.nativeElement, ngDomAdapter.DOM.getText(elRef.nativeElement) + 'noduplicate');
     }
 });
 var OtherDuplicateDir = ng.Directive({ selector: '[no-duplicate]' }).Class({
     constructor: function(elRef) {
-        ngDom_adapter.DOM.setText(elRef.nativeElement, ngDom_adapter.DOM.getText(elRef.nativeElement) + 'othernoduplicate');
+        ngDomAdapter.DOM.setText(elRef.nativeElement, ngDomAdapter.DOM.getText(elRef.nativeElement) + 'othernoduplicate');
     }
 });
 var DirectiveThrowingAnError = ng.Directive({ selector: 'directive-throwing-error' }).Class({

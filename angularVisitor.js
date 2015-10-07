@@ -4,6 +4,7 @@ Rewrite
   1) imported variable renaming
     - renames any imported vars with '_1' suffix by removing suffix
     - renames any imported vars coming from an angular base repo 'angular2/' with an 'ng' prefix
+    - renames any imported vars coming from an angular base repo 'angular2/' from snake case to camel case. 
     - renames angular2/angular2 -> 'ng'
   2) ng DSL translation
     - handles all class level annotations - @Component, @View, @Directive, @Injectable ...
@@ -364,7 +365,7 @@ function addMappedVarName(varName, isNgVar, context) {
       newVarName = varName.substr(0, varName.length - 2);
     }
     if (isNgVar && varName !== 'ng' ) {
-      newVarName = 'ng' + capitalizeFirstLetter(newVarName);
+      newVarName = 'ng' + capitalizeFirstLetter(snakeToCamelCase(newVarName));
     }
   }
   if (newVarName) {
@@ -375,6 +376,10 @@ function addMappedVarName(varName, isNgVar, context) {
 
 function capitalizeFirstLetter(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function snakeToCamelCase(s){
+  return s.replace(/(_\w)/g, function(m){return m[1].toUpperCase();});
 }
 
 function getMappedVarName(varName, context) {

@@ -218,45 +218,8 @@ function transformDecorateCall(cePath, context) {
       decorator.arguments
     )
   });
-  if (ctorFunc) {
-    var ctorPropValue = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
-    if (paramElements.length) {
-      var paramAnnots = [];
-      paramElements.forEach(function(pe) {
-        var index = pe.arguments[0].value;
-        var expr = pe.arguments[1];
-        if (expr.type === 'CallExpression') {
-          expr = b.newExpression(expr.callee, expr.arguments);
-        }
-        if (paramAnnots[index]) {
-          // if there is already parameter annotation defined for this index
-          // create an array and add this annotation to the end.
-          if (!Array.isArray(paramAnnots[index])) {
-            paramAnnots[index] = [ paramAnnots.index];
-          }
-          paramAnnots[index].push(expr)
-        } else {
-          paramAnnots[index] = expr;
-        }
-      });
-      paramAnnots.push(ctorPropValue);
-      ctorPropValue = b.arrayExpression( paramAnnots );
-    }
-    ngCall = b.callExpression(
-      b.memberExpression(
-        ngCall,
-        b.identifier('Class')
-      ),
-      [ b.objectExpression( [
-          b.property(
-            'init',
-            b.identifier('constructor'),
-            ctorPropValue
-          )]
-      )]
-    )
-    pruneButKeepComments(ctorFunc);
-  }
+  ngCall = addClassDsl(ngCall, ctorFunc, paramElements);
+
   cePath.replace(ngCall);
   // identify parent and make cePath the first child of the parent
   var parentBlock = getParentOfType(cePath,'BlockStatement');
@@ -274,6 +237,50 @@ function transformDecorateCall(cePath, context) {
   });
   context.ngMap[assignNode.name] = { ngCall: ngCall, statements: statements };
 
+}
+
+function addClassDsl(ngCall, ctorFunc, paramElements) {
+  if (!ctorFunc) return ngCall;
+  var b = astTypes.builders;
+  var ctorPropValue = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
+  if (paramElements.length) {
+    var paramAnnots = [];
+    paramElements.forEach(function(pe) {
+      var index = pe.arguments[0].value;
+      var expr = pe.arguments[1];
+      if (expr.type === 'CallExpression') {
+        expr = b.newExpression(expr.callee, expr.arguments);
+      }
+      if (paramAnnots[index]) {
+        // if there is already parameter annotation defined for this index
+        // create an array and add this annotation to the end.
+        if (!Array.isArray(paramAnnots[index])) {
+          paramAnnots[index] = [ paramAnnots.index];
+        }
+        paramAnnots[index].push(expr)
+      } else {
+        paramAnnots[index] = expr;
+      }
+    });
+    paramAnnots.push(ctorPropValue);
+    ctorPropValue = b.arrayExpression( paramAnnots );
+  }
+
+  ngCall = b.callExpression(
+    b.memberExpression(
+      ngCall,
+      b.identifier('Class')
+    ),
+    [ b.objectExpression( [
+        b.property(
+          'init',
+          b.identifier('constructor'),
+          ctorPropValue
+        )]
+    )]
+  )
+  pruneButKeepComments(ctorFunc);
+  return ngCall;
 }
 
 // return the identifier node on the left side of a callExpression if any.

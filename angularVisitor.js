@@ -51,7 +51,7 @@ function visit(ast) {
     funcMap: {},
     ngMap: { },
     varNameMap: _.extend({}, _varNameMap),
-    scopeChain: [],
+    scopeChain: [], // not yet needed.
   };
 
   astTypes.visit(ast, {
@@ -107,22 +107,6 @@ function visit(ast) {
   });
 }
 
-function renameIdentifierIfNeeded(idPath, context) {
-  var node = idPath.node;
-  var newName = getMappedVarName(node.name, context);
-  if (newName) {
-    node.name = newName;
-  }
-}
-
-// capture any function declarations that might be constructors.
-function capturePossibleCtors(fdPath, context) {
-  var node = fdPath.node;
-  var name = node.id && node.id.name;
-  if (name) {
-    context.funcMap[name] = fdPath;
-  }
-}
 
 // remove any variable declarations in the _varsToRemove list.
 function removeExtraneousDeclarations(vdPath) {
@@ -166,6 +150,16 @@ function pruneButKeepComments(path) {
   path.prune();
 }
 
+// capture any function declarations that might be constructors.
+function capturePossibleCtors(fdPath, context) {
+  var node = fdPath.node;
+  var name = node.id && node.id.name;
+  if (name) {
+    context.funcMap[name] = fdPath;
+  }
+}
+
+// process the require call and rename the resulting var.
 function processRequireCall(cePath, context) {
   var assignNode = getAssignmentIdentifier(cePath);
 
@@ -182,20 +176,33 @@ function processRequireCall(cePath, context) {
 
 // transform a __decorate call expression to use ng DSL call chain.
 function transformDecorateCall(cePath, context) {
-  var assignNode = getAssignmentIdentifier(cePath);
-  var ctorFunc = context.funcMap[assignNode.name];
-  // replace the parent with a block expression
+  // replace cePath with a ng DSL chained expression
   // containing just the non-metadata arguments to __decorate
+  // but keep all other statements around to be spliced in later.
   var annotationInfo = collectDecorateAnnotations(cePath);
   var ngCall = createNgDsl(annotationInfo.classAnnots, context);
-  ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
+  var assignNode = getAssignmentIdentifier(cePath);
+  var ctorFunc = context.funcMap[assignNode.name];
+  if (ctorFunc) {
+    ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
+  }
 
-  cePath.replace(ngCall);
   var statements = collectNonDslStatements(cePath);
 
   context.ngMap[assignNode.name] = { ngCall: ngCall, statements: statements };
+  cePath.replace(ngCall);
 }
 
+// check if identifier needs to be renamed
+function renameIdentifierIfNeeded(idPath, context) {
+  var node = idPath.node;
+  var newName = getMappedVarName(node.name, context);
+  if (newName) {
+    node.name = newName;
+  }
+}
+
+// 2nd order helper functions
 
 function collectDecorateAnnotations(cePath) {
   var args = cePath.node.arguments;
@@ -235,32 +242,10 @@ function createNgDsl(classAnnots, context) {
   return ngCall;
 }
 
-function addNgClassDsl(ngCall, ctorFunc, paramElements) {
-  if (!ctorFunc) return ngCall;
+function addNgClassDsl(ngCall, ctorFunc, paramAnnots) {
   var b = astTypes.builders;
-  var ctorPropValue = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
-  if (paramElements.length) {
-    var paramAnnots = [];
-    paramElements.forEach(function(pe) {
-      var index = pe.arguments[0].value;
-      var expr = pe.arguments[1];
-      if (expr.type === 'CallExpression') {
-        expr = b.newExpression(expr.callee, expr.arguments);
-      }
-      if (paramAnnots[index]) {
-        // if there is already parameter annotation defined for this index
-        // create an array and add this annotation to the end.
-        if (!Array.isArray(paramAnnots[index])) {
-          paramAnnots[index] = [ paramAnnots.index];
-        }
-        paramAnnots[index].push(expr)
-      } else {
-        paramAnnots[index] = expr;
-      }
-    });
-    paramAnnots.push(ctorPropValue);
-    ctorPropValue = b.arrayExpression( paramAnnots );
-  }
+  var ctorPropExpr = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
+  ctorPropExpr = addParamAnnots(ctorPropExpr, paramAnnots);
 
   ngCall = b.callExpression(
     b.memberExpression(
@@ -271,12 +256,38 @@ function addNgClassDsl(ngCall, ctorFunc, paramElements) {
         b.property(
           'init',
           b.identifier('constructor'),
-          ctorPropValue
+          ctorPropExpr
         )]
     )]
   )
   pruneButKeepComments(ctorFunc);
   return ngCall;
+}
+
+function addParamAnnots(ctorPropExpr, paramAnnots) {
+  if (paramAnnots.length === 0) return ctorPropExpr;
+  var b = astTypes.builders;
+  var paramItems = [];
+  paramAnnots.forEach(function(pe) {
+    var index = pe.arguments[0].value;
+    var expr = pe.arguments[1];
+    if (expr.type === 'CallExpression') {
+      expr = b.newExpression(expr.callee, expr.arguments);
+    }
+    if (paramItems[index]) {
+      // if there is already parameter annotation defined for this index
+      // create an array and add this annotation to the end.
+      if (!Array.isArray(paramItems[index])) {
+        paramItems[index] = [ paramItems.index];
+      }
+      paramItems[index].push(expr)
+    } else {
+      paramItems[index] = expr;
+    }
+  });
+  paramItems.push(ctorPropExpr);
+  ctorPropExpr = b.arrayExpression( paramItems );
+  return ctorPropExpr;
 }
 
 // collect all of the non-DSL statements of the parent block containing
@@ -315,7 +326,6 @@ function getAssignmentIdentifier(cePath) {
   }
 }
 
-
 function addMappedVarName(varName, isNgVar, context) {
   var newVarName = _varNameMap[varName];
   if (!newVarName) {
@@ -345,6 +355,34 @@ function getMappedVarName(varName, context) {
   }
 }
 
+function getParentOfType(path, type) {
+  var nextParent = path.parent;
+  while (nextParent.node.type !== type) {
+    nextParent = nextParent.parent;
+    if (nextParent == null) {
+      return null;
+    }
+  }
+  return nextParent;
+}
+
+// inject '.rewrite.' into the fileName
+function getRewriteFileName(fileName) {
+  var dirName = path.dirname(fileName);
+  var extName = path.extname(fileName);
+  var baseName = path.basename(fileName, extName);
+
+  var newName = path.join(dirName, baseName + '.rewrite' + extName);
+  return newName;
+}
+
+module.exports = {
+  rewrite: rewrite,
+  rewriteFile: rewriteFile,
+  rewriteFolder: rewriteFolder
+};
+
+//// not currently used
 
 // build an IIFE around the specified node.
 function buildIIFE(node) {
@@ -379,64 +417,35 @@ function getCurrentScope(context) {
   return scopeChain[scopeChain.length - 1];
 }
 
-function printScope(context){
-  var result = [];
-  context.scopeChain.forEach(function(scope) {
-    var node = scope.path.node;
-    var r;
-    if (node.type === 'Program'){
-      r = 'global scope:';
-    } else if (node.id && node.id.name){
-      r = 'function(' + node.id.name + ')';
-    } else {
-      r = 'anon function'
-    }
-    var vars = _.keys(scope.vars).join(',');
-    result.push(r + ": " + vars);
-  });
-  return result.join('\n');
-}
+//function printScope(context){
+//  var result = [];
+//  context.scopeChain.forEach(function(scope) {
+//    var node = scope.path.node;
+//    var r;
+//    if (node.type === 'Program'){
+//      r = 'global scope:';
+//    } else if (node.id && node.id.name){
+//      r = 'function(' + node.id.name + ')';
+//    } else {
+//      r = 'anon function'
+//    }
+//    var vars = _.keys(scope.vars).join(',');
+//    result.push(r + ": " + vars);
+//  });
+//  return result.join('\n');
+//}
+//
+//function getVarDef(varname, scopeChain){
+//  for (var i = 0; i < scopeChain.length; i++){
+//    var scope = scopeChain[i];
+//    var varDef = scope[varName];
+//    if (varDef) {
+//      return varDef;
+//    }
+//  }
+//  return null;
+//}
 
-function getVarDef(varname, scopeChain){
-  for (var i = 0; i < scopeChain.length; i++){
-    var scope = scopeChain[i];
-    var varDef = scope[varName];
-    if (varDef) {
-      return varDef;
-    }
-  }
-  return null;
-}
-
-// not currently used
-function getParentOfType(path, type) {
-  var nextParent = path.parent;
-  while (nextParent.node.type !== type) {
-    nextParent = nextParent.parent;
-    if (nextParent == null) {
-      return null;
-    }
-  }
-  return nextParent;
-}
-
-// inject '.rewrite.' into the fileName
-function getRewriteFileName(fileName) {
-  var dirName = path.dirname(fileName);
-  var extName = path.extname(fileName);
-  var baseName = path.basename(fileName, extName);
-
-  var newName = path.join(dirName, baseName + '.rewrite' + extName);
-  return newName;
-}
-
-module.exports = {
-  rewrite: rewrite,
-  rewriteFile: rewriteFile,
-  rewriteFolder: rewriteFolder
-};
-
-//// not currently used
 //function fixBodyComments(body) {
 //  var lastNode = body[body.length - 1];
 //  if (!lastNode.comments) return;

@@ -24,8 +24,8 @@ gulp.task('help', taskListing.withFilters(function(taskName) {
 // if -f value ends in '.ts' then compiles and rewrites the ts file specified.
 // if -f value ends in '.js' then just rewrites the js file specified.
 gulp.task('rewrite', function() {
-  var filePath = argv.file || argv.f || 'simple';
-  filePath = path.join('examples', filePath);
+  var filePath = argv.file || argv.f || 'examples';
+  // filePath = path.join('examples', filePath);
   var fstat = fileStats(filePath);
   if (fstat == null) {
     console.log('unable to locate file or folder: ' + filePath);

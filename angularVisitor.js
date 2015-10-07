@@ -198,6 +198,10 @@ function transformDecorateCall(cePath, context) {
   var annotationInfo = collectDecorateAnnotations(cePath);
   var ngCall = createNgDsl(annotationInfo.classAnnots, context);
   var assignNode = getAssignmentIdentifier(cePath);
+  if (!assignNode) {
+    console.log("ERROR: unable to process a __decorate call on line: " + cePath.node.loc.end.line + " of the '.js' file");
+    return;
+  }
   var ctorFunc = context.funcMap[assignNode.name];
   if (ctorFunc) {
     ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
@@ -294,7 +298,8 @@ function addParamAnnots(ctorPropExpr, paramAnnots) {
       // if there is already parameter annotation defined for this index
       // create an array and add this annotation to the end.
       if (!Array.isArray(paramItems[index])) {
-        paramItems[index] = [ paramItems.index];
+        // need another arrayExpression here
+        paramItems[index] = [ paramItems[index]];
       }
       paramItems[index].push(expr)
     } else {
@@ -302,6 +307,15 @@ function addParamAnnots(ctorPropExpr, paramAnnots) {
     }
   });
   paramItems.push(ctorPropExpr);
+  for (var i = 0; i < paramItems.length; i++) {
+    var pi = paramItems[i];
+    if (pi === undefined) {
+      paramItems[i] = b.literal(null);
+    } else if (Array.isArray(pi)) {
+      paramItems[i] = b.arrayExpression(paramItems[i]);
+    }
+  }
+
   ctorPropExpr = b.arrayExpression( paramItems );
   return ctorPropExpr;
 }

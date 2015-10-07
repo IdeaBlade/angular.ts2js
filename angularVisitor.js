@@ -8,7 +8,7 @@ var fs = require('fs');
 var path = require('canonical-path');
 var globule = require('globule');
 
-var _varsToRemove = ['__decorate', '__metadata' ];
+var _varsToRemove = ['__decorate', '__metadata', '__param' ];
 var _varNameMap = {
   'angular2_1': 'ng',
   'test_lib': 'testLib'
@@ -58,9 +58,10 @@ function visit(ast) {
     visitProgram: function(path) {
       var node = path.node;
       scopeTraverse(this, path, context);
-      var body = node.body;
-      var iife = buildIIFE(body);
-      node.body = [iife];
+      // remove next three lines to create an IIFE.
+      //var body = node.body;
+      //var iife = buildIIFE(body);
+      //node.body = [iife];
     },
     visitVariableDeclaration: function(path) {
       removeExtraneousDeclarations(path);
@@ -191,9 +192,14 @@ function transformDecorateCall(cePath, context) {
   var decorators = args[0];
   var target = args[1];
   assert(decorators && decorators.type === 'ArrayExpression', "__decorate arguments should be an array");
+  var paramElements = [];
   decorators.elements = decorators.elements.filter(function(ele) {
     // remove _metadata
     if (ele.callee && ele.callee.type === 'Identifier' && ele.callee.name == '__metadata') {
+      return false;
+    // remove but keep track of parameter annotations
+    } else if ( ele.callee && ele.callee.name === '__param') {
+      paramElements.push(ele);
       return false;
     } else {
       return true;
@@ -213,6 +219,29 @@ function transformDecorateCall(cePath, context) {
     )
   });
   if (ctorFunc) {
+    var ctorPropValue = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
+    if (paramElements.length) {
+      var paramAnnots = [];
+      paramElements.forEach(function(pe) {
+        var index = pe.arguments[0].value;
+        var expr = pe.arguments[1];
+        if (expr.type === 'CallExpression') {
+          expr = b.newExpression(expr.callee, expr.arguments);
+        }
+        if (paramAnnots[index]) {
+          // if there is already parameter annotation defined for this index
+          // create an array and add this annotation to the end.
+          if (!Array.isArray(paramAnnots[index])) {
+            paramAnnots[index] = [ paramAnnots.index];
+          }
+          paramAnnots[index].push(expr)
+        } else {
+          paramAnnots[index] = expr;
+        }
+      });
+      paramAnnots.push(ctorPropValue);
+      ctorPropValue = b.arrayExpression( paramAnnots );
+    }
     ngCall = b.callExpression(
       b.memberExpression(
         ngCall,
@@ -222,7 +251,7 @@ function transformDecorateCall(cePath, context) {
           b.property(
             'init',
             b.identifier('constructor'),
-            b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body)
+            ctorPropValue
           )]
       )]
     )

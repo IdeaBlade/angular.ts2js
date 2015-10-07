@@ -182,34 +182,48 @@ function processRequireCall(cePath, context) {
 
 // transform a __decorate call expression to use ng DSL call chain.
 function transformDecorateCall(cePath, context) {
-  var node = cePath.node;
-
   var assignNode = getAssignmentIdentifier(cePath);
   var ctorFunc = context.funcMap[assignNode.name];
   // replace the parent with a block expression
   // containing just the non-metadata arguments to __decorate
-  var args = node.arguments;
-  var decorators = args[0];
+  var annotationInfo = collectDecorateAnnotations(cePath);
+  var ngCall = createNgDsl(annotationInfo.classAnnots, context);
+  ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
+
+  cePath.replace(ngCall);
+  var statements = collectNonDslStatements(cePath);
+
+  context.ngMap[assignNode.name] = { ngCall: ngCall, statements: statements };
+}
+
+
+function collectDecorateAnnotations(cePath) {
+  var args = cePath.node.arguments;
+  var decoratorExpr = args[0];
   var target = args[1];
-  assert(decorators && decorators.type === 'ArrayExpression', "__decorate arguments should be an array");
-  var paramElements = [];
-  decorators.elements = decorators.elements.filter(function(ele) {
-    // remove _metadata
+  assert(decoratorExpr && decoratorExpr.type === 'ArrayExpression', "__decorate arguments should be an array");
+  var paramAnnots = [];
+  var classAnnots = [];
+  decoratorExpr.elements.forEach(function(ele) {
+    // ignore _metadata
     if (ele.callee && ele.callee.type === 'Identifier' && ele.callee.name == '__metadata') {
-      return false;
-    // remove but keep track of parameter annotations
+      return;
+      // remove but keep track of parameter annotations
     } else if ( ele.callee && ele.callee.name === '__param') {
-      paramElements.push(ele);
-      return false;
+      paramAnnots.push(ele);
     } else {
-      return true;
+      classAnnots.push(ele);
     }
   });
+  return { classAnnots: classAnnots, paramAnnots: paramAnnots };
+}
+
+function createNgDsl(classAnnots, context) {
   var b = astTypes.builders;
   var ngName = getMappedVarName('angular2_1', context) || 'ng';
   var ngCall = b.identifier(ngName);
 
-  decorators.elements.forEach(function(decorator) {
+  classAnnots.forEach(function(decorator) {
     ngCall = b.callExpression(
       b.memberExpression(
         ngCall,
@@ -218,28 +232,10 @@ function transformDecorateCall(cePath, context) {
       decorator.arguments
     )
   });
-  ngCall = addClassDsl(ngCall, ctorFunc, paramElements);
-
-  cePath.replace(ngCall);
-  // identify parent and make cePath the first child of the parent
-  var parentBlock = getParentOfType(cePath,'BlockStatement');
-  var statements = parentBlock.node.body;
-  var hasReturned = false;
-  statements = statements.filter(function(statement) {
-    if (hasReturned || statement.type === 'ReturnStatement') {
-      // ts will sometimes generate variable declaration statements after the return statement
-      // these can be ignored.
-      hasReturned = true;
-      return false;
-    }
-    if (statement.expression === cePath.parent.node) return false;
-    return true;
-  });
-  context.ngMap[assignNode.name] = { ngCall: ngCall, statements: statements };
-
+  return ngCall;
 }
 
-function addClassDsl(ngCall, ctorFunc, paramElements) {
+function addNgClassDsl(ngCall, ctorFunc, paramElements) {
   if (!ctorFunc) return ngCall;
   var b = astTypes.builders;
   var ctorPropValue = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
@@ -282,6 +278,27 @@ function addClassDsl(ngCall, ctorFunc, paramElements) {
   pruneButKeepComments(ctorFunc);
   return ngCall;
 }
+
+// collect all of the non-DSL statements of the parent block containing
+// the _decorate callExpr
+function collectNonDslStatements(cePath) {
+  // identify parent and make cePath the first child of the parent
+  var parentBlock = getParentOfType(cePath, 'BlockStatement');
+  var statements = parentBlock.node.body;
+  var hasReturned = false;
+  statements = statements.filter(function(statement) {
+    if (hasReturned || statement.type === 'ReturnStatement') {
+      // ts will sometimes generate variable declaration statements after the return statement
+      // these can be ignored.
+      hasReturned = true;
+      return false;
+    }
+    if (statement.expression === cePath.parent.node) return false;
+    return true;
+  });
+  return statements;
+}
+
 
 // return the identifier node on the left side of a callExpression if any.
 function getAssignmentIdentifier(cePath) {

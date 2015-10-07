@@ -10,12 +10,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var angular2_1 = require('angular2/angular2');
+// region foo
 var foo = 'test';
 var AppComponent = (function () {
+    // endregion 2
     function AppComponent(arg0) {
         this.foo = arg0;
         this.name = 'Alice';
     }
+    // endregion 3
     AppComponent.prototype.doFoo = function (arg1) {
         return arg1;
     };

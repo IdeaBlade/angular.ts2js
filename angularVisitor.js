@@ -1,3 +1,19 @@
+/*
+
+Rewrite
+  1) imported variable renaming
+    - renames any imported vars with '_1' suffix by removing suffix
+    - renames any imported vars coming from an angular base repo 'angular2/' with an 'ng' prefix
+    - renames angular2/angular2 -> 'ng'
+  2) ng DSL translation
+    - handles all class level annotations - @Component, @View, @Directive, @Injectable ...
+    - handles constructor paramater annotations
+  3) remove function def cruft
+    - __metadata, __decorate, __param
+  4) promotes class IIFE's up one level.
+
+
+*/
 var recast = require('recast');
 var astTypes = require('ast-types');
 var assert = require('assert');

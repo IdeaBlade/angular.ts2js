@@ -1,7 +1,8 @@
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    __.prototype = b.prototype;
+    d.prototype = new __();
 };
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") return Reflect.decorate(decorators, target, key, desc);
@@ -25,12 +26,6 @@ var async_1 = require('angular2/src/core/facade/async');
 var core_1 = require('angular2/core');
 var change_detection_1 = require('angular2/src/core/change_detection/change_detection');
 var metadata_1 = require('angular2/src/core/metadata');
-var query_list_1 = require('angular2/src/core/linker/query_list');
-var view_container_ref_1 = require('angular2/src/core/linker/view_container_ref');
-var compiler_1 = require('angular2/src/core/linker/compiler');
-var element_ref_1 = require('angular2/src/core/linker/element_ref');
-var template_ref_1 = require('angular2/src/core/linker/template_ref');
-var dom_renderer_1 = require('angular2/src/core/render/dom/dom_renderer');
 var ANCHOR_ELEMENT = lang_1.CONST_EXPR(new core_1.OpaqueToken('AnchorElement'));
 function main() {
 }
@@ -54,10 +49,9 @@ var SimpleImperativeViewComponent = (function () {
         metadata_1.Component({ selector: 'simple-imp-cmp' }),
         metadata_1.View({ template: '' }),
         core_1.Injectable(), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof element_ref_1.ElementRef !== 'undefined' && element_ref_1.ElementRef) === 'function' && _a) || Object, (typeof (_b = typeof dom_renderer_1.DomRenderer !== 'undefined' && dom_renderer_1.DomRenderer) === 'function' && _b) || Object])
+        __metadata('design:paramtypes', [(typeof ElementRef !== 'undefined' && ElementRef) || Object, (typeof DomRenderer !== 'undefined' && DomRenderer) || Object])
     ], SimpleImperativeViewComponent);
     return SimpleImperativeViewComponent;
-    var _a, _b;
 })();
 var DynamicViewport = (function () {
     function DynamicViewport(vc, compiler) {
@@ -70,10 +64,9 @@ var DynamicViewport = (function () {
     DynamicViewport = __decorate([
         metadata_1.Directive({ selector: 'dynamic-vp' }),
         core_1.Injectable(), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof view_container_ref_1.ViewContainerRef !== 'undefined' && view_container_ref_1.ViewContainerRef) === 'function' && _a) || Object, (typeof (_b = typeof compiler_1.Compiler !== 'undefined' && compiler_1.Compiler) === 'function' && _b) || Object])
+        __metadata('design:paramtypes', [(typeof ViewContainerRef !== 'undefined' && ViewContainerRef) || Object, (typeof Compiler !== 'undefined' && Compiler) || Object])
     ], DynamicViewport);
     return DynamicViewport;
-    var _a, _b;
 })();
 var MyDir = (function () {
     function MyDir() {
@@ -146,10 +139,9 @@ var PushCmpWithRef = (function () {
         }),
         metadata_1.View({ template: '{{field}}' }),
         core_1.Injectable(), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof change_detection_1.ChangeDetectorRef !== 'undefined' && change_detection_1.ChangeDetectorRef) === 'function' && _a) || Object])
+        __metadata('design:paramtypes', [(typeof ChangeDetectorRef !== 'undefined' && ChangeDetectorRef) || Object])
     ], PushCmpWithRef);
     return PushCmpWithRef;
-    var _a;
 })();
 var PushCmpWithAsyncPipe = (function () {
     function PushCmpWithAsyncPipe() {
@@ -274,10 +266,9 @@ var SomeViewport = (function () {
     SomeViewport = __decorate([
         metadata_1.Directive({ selector: '[some-viewport]' }),
         core_1.Injectable(), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof view_container_ref_1.ViewContainerRef !== 'undefined' && view_container_ref_1.ViewContainerRef) === 'function' && _a) || Object, (typeof (_b = typeof template_ref_1.TemplateRef !== 'undefined' && template_ref_1.TemplateRef) === 'function' && _b) || Object])
+        __metadata('design:paramtypes', [(typeof ViewContainerRef !== 'undefined' && ViewContainerRef) || Object, (typeof TemplateRef !== 'undefined' && TemplateRef) || Object])
     ], SomeViewport);
     return SomeViewport;
-    var _a, _b;
 })();
 var DoublePipe = (function () {
     function DoublePipe() {
@@ -481,10 +472,9 @@ var ToolbarPart = (function () {
     ToolbarPart = __decorate([
         metadata_1.Directive({ selector: '[toolbarpart]' }),
         core_1.Injectable(), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof template_ref_1.TemplateRef !== 'undefined' && template_ref_1.TemplateRef) === 'function' && _a) || Object])
+        __metadata('design:paramtypes', [(typeof TemplateRef !== 'undefined' && TemplateRef) || Object])
     ], ToolbarPart);
     return ToolbarPart;
-    var _a;
 })();
 var ToolbarViewContainer = (function () {
     function ToolbarViewContainer(vc) {
@@ -501,10 +491,9 @@ var ToolbarViewContainer = (function () {
     ToolbarViewContainer = __decorate([
         metadata_1.Directive({ selector: '[toolbar-vc]', inputs: ['toolbarVc'] }),
         core_1.Injectable(), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof view_container_ref_1.ViewContainerRef !== 'undefined' && view_container_ref_1.ViewContainerRef) === 'function' && _a) || Object])
+        __metadata('design:paramtypes', [(typeof ViewContainerRef !== 'undefined' && ViewContainerRef) || Object])
     ], ToolbarViewContainer);
     return ToolbarViewContainer;
-    var _a;
 })();
 var ToolbarComponent = (function () {
     function ToolbarComponent(query) {
@@ -519,10 +508,9 @@ var ToolbarComponent = (function () {
         }),
         core_1.Injectable(),
         __param(0, metadata_1.Query(ToolbarPart)), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof query_list_1.QueryList !== 'undefined' && query_list_1.QueryList) === 'function' && _a) || Object])
+        __metadata('design:paramtypes', [(typeof QueryList !== 'undefined' && QueryList) || Object])
     ], ToolbarComponent);
     return ToolbarComponent;
-    var _a;
 })();
 var DirectiveWithTwoWayBinding = (function () {
     function DirectiveWithTwoWayBinding() {
@@ -726,10 +714,9 @@ var SomeImperativeViewport = (function () {
         metadata_1.Directive({ selector: '[some-impvp]', inputs: ['someImpvp'] }),
         core_1.Injectable(),
         __param(3, core_1.Inject(ANCHOR_ELEMENT)), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof view_container_ref_1.ViewContainerRef !== 'undefined' && view_container_ref_1.ViewContainerRef) === 'function' && _a) || Object, (typeof (_b = typeof template_ref_1.TemplateRef !== 'undefined' && template_ref_1.TemplateRef) === 'function' && _b) || Object, (typeof (_c = typeof dom_renderer_1.DomRenderer !== 'undefined' && dom_renderer_1.DomRenderer) === 'function' && _c) || Object, Object])
+        __metadata('design:paramtypes', [(typeof ViewContainerRef !== 'undefined' && ViewContainerRef) || Object, (typeof TemplateRef !== 'undefined' && TemplateRef) || Object, (typeof DomRenderer !== 'undefined' && DomRenderer) || Object, Object])
     ], SomeImperativeViewport);
     return SomeImperativeViewport;
-    var _a, _b, _c;
 })();
 var ExportDir = (function () {
     function ExportDir() {
@@ -755,10 +742,9 @@ var DuplicateDir = (function () {
     }
     DuplicateDir = __decorate([
         metadata_1.Directive({ selector: '[no-duplicate]' }), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof element_ref_1.ElementRef !== 'undefined' && element_ref_1.ElementRef) === 'function' && _a) || Object])
+        __metadata('design:paramtypes', [(typeof ElementRef !== 'undefined' && ElementRef) || Object])
     ], DuplicateDir);
     return DuplicateDir;
-    var _a;
 })();
 var OtherDuplicateDir = (function () {
     function OtherDuplicateDir(elRef) {
@@ -766,10 +752,9 @@ var OtherDuplicateDir = (function () {
     }
     OtherDuplicateDir = __decorate([
         metadata_1.Directive({ selector: '[no-duplicate]' }), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof element_ref_1.ElementRef !== 'undefined' && element_ref_1.ElementRef) === 'function' && _a) || Object])
+        __metadata('design:paramtypes', [(typeof ElementRef !== 'undefined' && ElementRef) || Object])
     ], OtherDuplicateDir);
     return OtherDuplicateDir;
-    var _a;
 })();
 var DirectiveThrowingAnError = (function () {
     function DirectiveThrowingAnError() {
@@ -806,7 +791,7 @@ var DirectiveWithPropDecorators = (function () {
             metadata_1.HostListener("click", ["$event.target"]), 
             __metadata('design:type', Function), 
             __metadata('design:paramtypes', [Object]), 
-            __metadata('design:returntype', void 0)
+            __metadata('design:returntype', Object)
         ], DirectiveWithPropDecorators.prototype, "onClick", Object.getOwnPropertyDescriptor(DirectiveWithPropDecorators.prototype, "onClick")));
     DirectiveWithPropDecorators = __decorate([
         metadata_1.Directive({ selector: 'with-prop-decorators' }), 

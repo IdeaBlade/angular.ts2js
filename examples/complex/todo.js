@@ -46,10 +46,9 @@ var TodoApp = (function () {
     TodoApp = __decorate([
         core_1.Component({ selector: 'todo-app', viewBindings: [TodoStore_1.Store, TodoStore_1.TodoFactory] }),
         core_1.View({ templateUrl: 'todo.html', directives: [core_1.NgFor] }), 
-        __metadata('design:paramtypes', [(typeof (_a = typeof TodoStore_1.Store !== 'undefined' && TodoStore_1.Store) === 'function' && _a) || Object, (typeof (_b = typeof TodoStore_1.TodoFactory !== 'undefined' && TodoStore_1.TodoFactory) === 'function' && _b) || Object])
+        __metadata('design:paramtypes', [(typeof Store !== 'undefined' && Store) || Object, (typeof TodoFactory !== 'undefined' && TodoFactory) || Object])
     ], TodoApp);
     return TodoApp;
-    var _a, _b;
 })();
 function main() {
     bootstrap_1.bootstrap(TodoApp);

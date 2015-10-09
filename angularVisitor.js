@@ -53,7 +53,7 @@ function rewriteFile(sourceFile, destFile) {
 }
 
 function rewriteFolder(sourceFolder) {
-  var gpath = path.join(sourceFolder, '*.js');
+  var gpath = path.join(sourceFolder, '**/*.js');
   var fileNames = globule.find([gpath, '!**/*.rewrite*.js']);
   fileNames.forEach(function(fileName) {
     console.log('rewriting ' + fileName);

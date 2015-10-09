@@ -6,8 +6,6 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "live-server": "live-server",
-    "tsc": "tsc"
   },
   "repository": {
     "type": "git",
@@ -28,6 +26,7 @@
     "ast-types": "^0.8.12",
     "browser-sync": "^2.9.3",
     "canonical-path": "0.0.2",
+    "child-process-promise": "^1.1.0",
     "del": "^1.2.0",
     "fs-extra": "^0.24.0",
     "glob": "^5.0.14",

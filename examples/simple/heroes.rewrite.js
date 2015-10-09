@@ -1,6 +1,4 @@
 var ng = require('angular2/angular2');
-var ngRouter = require('angular2/router');
-var hero_service = require('./hero.service');
 var route_config = require('./route.config');
 var constants = require('./constants');
 var HeroesComponent = ng.Component({ selector: 'my-heroes' }).View({

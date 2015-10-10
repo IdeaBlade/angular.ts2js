@@ -11,6 +11,7 @@ var angularVisitor = require('./angularVisitor');
 // if a file it can have either a '.ts' or '.js' extn.
 //   if a .ts file then it will be compiled and rewriten.
 //   if a .js file then it will be just rewritten.
+// returns a promise
 function rewrite(filePath) {
   var fstat = fileStats(filePath);
   if (fstat == null) {
@@ -21,7 +22,7 @@ function rewrite(filePath) {
   var extName = path.extname(filePath);
   if (isDir || extName == '.ts') {
     var jsPath = isDir ? filePath : changeExtn(filePath, '.js');
-    tscCompile(filePath).then(function () {
+    return tscCompile(filePath).then(function () {
       rewriteJs(jsPath);
     }).catch(function () {
       // most tscCompile errs are not actually fatal.
@@ -29,11 +30,15 @@ function rewrite(filePath) {
     })
   } else if (extName == '.js') {
     rewriteJs(filePath);
+    return Q.when();
   } else {
-    console.log('file path must end with ".js" or ".ts"');
+    var msg = 'file path must end with ".js" or ".ts"';
+    console.log(msg);
+    return Q.reject(msg);
   }
 }
 
+// returns a promise
 function tscCompile(filePath) {
   var filePaths;
   var isDir = fs.lstatSync(filePath).isDirectory();
@@ -74,7 +79,14 @@ function changeExtn(filePath, newExtn) {
 function runTsc(filePaths, shouldLog) {
   var deferred = Q.defer();
   var results = [];
-  var tscjs = path.join(process.cwd(), 'node_modules/typescript/bin/tsc.js');
+  var nmPath = 'node_modules/typescript/lib/tsc.js';
+  var tscjs = path.join(process.cwd(), nmPath);
+  // HACK
+  if (!fs.existsSync(tscjs)) {
+    // this will happen if this package is installed into another dir.
+    tscjs = path.join(process.cwd(), 'node_modules/angular.ts2js/', nmPath);
+  }
+  console.log('Running tsc from ' + tscjs);
   var compilerArgs = ['--target','ES5', '--module', 'commonjs', '--emitDecoratorMetadata', '--experimentalDecorators'];
   var args = [tscjs].concat(filePaths, compilerArgs);
   var childProcess = cp.spawn('node', args, { cwd: process.cwd() });

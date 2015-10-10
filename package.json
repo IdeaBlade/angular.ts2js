@@ -1,11 +1,11 @@
 {
   "name": "angular.ts2js",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Angular 2 Typescript to Javascript",
-  "main": "index.js",
+  "main": "rewriter.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -20,35 +20,28 @@
   "bugs": {
     "url": ""
   },
-  "devDependencies": {
+  "dependencies": {
     "argv": "0.0.2",
     "assert": "^1.3.0",
     "ast-types": "^0.8.12",
-    "browser-sync": "^2.9.3",
     "canonical-path": "0.0.2",
-    "child-process-promise": "^1.1.0",
     "del": "^1.2.0",
-    "fs-extra": "^0.24.0",
     "glob": "^5.0.14",
     "globule": "^0.2.0",
-    "gulp": "^3.5.6",
-    "gulp-task-listing": "^1.0.1",
-    "gulp-typescript": "^2.9.0",
-    "gulp-util": "^3.0.6",
-    "gulp-watch": "^4.3.4",
-    "jasmine-core": "^2.3.4",
-    "jasmine-node": "^1.14.5",
-    "jsonfile": "^2.2.2",
-    "live-server": "^0.8.1",
     "lodash": "^3.10.1",
     "minimatch": "^2.0.10",
     "path": "^0.11.14",
     "prompt": "^0.2.14",
     "q": "^1.4.1",
     "recast": "^0.10.33",
-    "stream-to-promise": "^1.0.4",
-    "typescript": "~1.5.3",
+    "typescript": "^1.6.2",
     "yargs": "^3.23.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.5.6",
+    "gulp-task-listing": "^1.0.1",
+    "jasmine-core": "^2.3.4",
+    "jasmine-node": "^1.14.5"
   },
   "contributors": [
     "Jay Traband <jayt@ideablade.com>"

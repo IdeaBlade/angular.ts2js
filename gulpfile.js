@@ -4,8 +4,7 @@ var path = require('canonical-path');
 var _ = require('lodash');
 var argv = require('yargs').argv;
 
-var angularVisitor = require('./angularVisitor');
-var main = require('./main');
+var rewriter = require('./rewriter');
 
 gulp.task('help', taskListing.withFilters(function(taskName) {
   var isSubTask = taskName.substr(0,1) == "_";
@@ -15,9 +14,9 @@ gulp.task('help', taskListing.withFilters(function(taskName) {
   return shouldRemove;
 }));
 
-gulp.task('rewrite', function() {
-  var filePath = argv.file || argv.f || 'examples';
-  main.rewrite(filePath);
+gulp.task('rewrite', function(done) {
+  var filePath = argv.file || argv.f || argv._[0] || 'examples';
+  rewriter.rewrite(filePath).then(done);
 });
 
 

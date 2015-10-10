@@ -3,7 +3,10 @@ var _ = require('lodash');
 var cp = require('child_process');
 var Q = require('q');
 var fs = require('fs');
+var mkdirp = require('mkdirp');
 var glob = require('glob');
+var globule = require('globule');
+
 var angularVisitor = require('./angularVisitor');
 
 // filePath can be either a file or a dir
@@ -11,8 +14,12 @@ var angularVisitor = require('./angularVisitor');
 // if a file it can have either a '.ts' or '.js' extn.
 //   if a .ts file then it will be compiled and rewriten.
 //   if a .js file then it will be just rewritten.
+// options: object
+//   outDir:
+//   suffix: defaults to 'rewrite'
 // returns a promise
-function rewrite(filePath) {
+function rewrite(filePath, options) {
+  options = options || { suffix: 'rewrite' }
   var fstat = fileStats(filePath);
   if (fstat == null) {
     console.log('unable to locate file or folder: ' + filePath);
@@ -23,13 +30,13 @@ function rewrite(filePath) {
   if (isDir || extName == '.ts') {
     var jsPath = isDir ? filePath : changeExtn(filePath, '.js');
     return tscCompile(filePath).then(function () {
-      rewriteJs(jsPath);
+      rewriteJs(jsPath, options);
     }).catch(function () {
       // most tscCompile errs are not actually fatal.
-      rewriteJs(jsPath);
+      rewriteJs(jsPath, options);
     })
   } else if (extName == '.js') {
-    rewriteJs(filePath);
+    rewriteJs(filePath, options);
     return Q.when();
   } else {
     var msg = 'file path must end with ".js" or ".ts"';
@@ -50,14 +57,31 @@ function tscCompile(filePath) {
   return runTsc(filePaths, true);
 }
 
-function rewriteJs(filePath) {
+function rewriteJs(filePath, options) {
   var isDir = fs.lstatSync(filePath).isDirectory();
   if (isDir) {
-    angularVisitor.rewriteFolder(filePath);
+    rewriteFolder(filePath, options);
   } else {
-    output = angularVisitor.rewriteFile(filePath);
+    output = rewriteFile(filePath, options);
     console.log(output);
   }
+}
+
+function rewriteFolder(sourceFolder, options) {
+  var gpath = path.join(sourceFolder, '**/*.js');
+  var fileNames = globule.find([gpath, '!**/*.rewrite*.js']);
+  fileNames.forEach(function(fileName) {
+    console.log('rewriting ' + fileName);
+    rewriteFile(fileName, options);
+  });
+}
+
+function rewriteFile(sourceFile, options) {
+  var source =fs.readFileSync(sourceFile);
+  var destFile = getRewriteFileName(sourceFile, options);
+  output = angularVisitor.rewrite(source);
+  fs.writeFileSync(destFile, output);
+  return output;
 }
 
 function fileStats(filePath) {
@@ -112,7 +136,19 @@ function runTsc(filePaths, shouldLog) {
   }
 }
 
-
+// inject '.rewrite.' into the fileName
+function getRewriteFileName(fileName, options) {
+  var dirName = options.outDir || path.dirname(fileName);
+  // insure that the folder exists.
+  if (!fs.existsSync(dirName)) {
+    mkdirp.sync(dirName);
+  }
+  var extName = path.extname(fileName);
+  var baseName = path.basename(fileName, extName);
+  var suffix = (options.suffix && options.suffix.length) ? '.' + options.suffix : '';
+  var newName = path.join(dirName, baseName + suffix + extName);
+  return newName;
+}
 
 //// returns a promise - BUT... problem is that the 'real' errors don't show up if 'err' variable.
 //function runTscExec(filePath) {

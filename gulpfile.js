@@ -16,7 +16,15 @@ gulp.task('help', taskListing.withFilters(function(taskName) {
 
 gulp.task('rewrite', function(done) {
   var filePath = argv.file || argv.f || argv._[0] || 'examples';
-  rewriter.rewrite(filePath).then(done);
+  var options;
+  if (argv.outDir || argv.suffix) {
+    options = {
+      outDir: argv.outDir,
+      suffix: argv.suffix
+    }
+  }
+  // use default options if none is given.
+  rewriter.rewrite(filePath, options).then(done);
 });
 
 

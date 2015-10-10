@@ -21,9 +21,7 @@ var assert = require('assert');
 
 var _ = require('lodash');
 
-var fs = require('fs');
-var path = require('canonical-path');
-var globule = require('globule');
+
 
 var _varsToRemove = ['__decorate', '__metadata', '__param' ];
 var _varNameMap = {
@@ -42,23 +40,6 @@ function rewrite(source) {
   output = output.replace(/(?:\r\n|\r|\n).*sourceMappingURL=.*/, '');
   output = output.replace(/(?:\r\n|\r|\n).*var __dummy.*/, '');
   return output;
-}
-
-function rewriteFile(sourceFile, destFile) {
-  var source =fs.readFileSync(sourceFile);
-  destFile = destFile || getRewriteFileName(sourceFile);
-  output = rewrite(source);
-  fs.writeFileSync(destFile, output);
-  return output;
-}
-
-function rewriteFolder(sourceFolder) {
-  var gpath = path.join(sourceFolder, '**/*.js');
-  var fileNames = globule.find([gpath, '!**/*.rewrite*.js']);
-  fileNames.forEach(function(fileName) {
-    console.log('rewriting ' + fileName);
-    rewriteFile(fileName);
-  });
 }
 
 // TODO: need to keep any comments in variable declarations.
@@ -401,20 +382,10 @@ function getParentOfType(path, type) {
   return nextParent;
 }
 
-// inject '.rewrite.' into the fileName
-function getRewriteFileName(fileName) {
-  var dirName = path.dirname(fileName);
-  var extName = path.extname(fileName);
-  var baseName = path.basename(fileName, extName);
 
-  var newName = path.join(dirName, baseName + '.rewrite' + extName);
-  return newName;
-}
 
 module.exports = {
-  rewrite: rewrite,
-  rewriteFile: rewriteFile,
-  rewriteFolder: rewriteFolder
+  rewrite: rewrite
 };
 
 //// not currently used

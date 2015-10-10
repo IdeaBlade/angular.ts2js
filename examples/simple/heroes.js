@@ -10,6 +10,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var angular2_1 = require('angular2/angular2');
+var router_1 = require('angular2/router');
+var hero_service_1 = require('./hero.service');
 var route_config_1 = require('./route.config');
 var constants_1 = require('./constants');
 var HeroesComponent = (function () {
@@ -42,8 +44,9 @@ var HeroesComponent = (function () {
             directives: [constants_1.COMMON_DIRECTIVES],
             styleUrls: ['app/heroes.component.css']
         }), 
-        __metadata('design:paramtypes', [(typeof HeroService !== 'undefined' && HeroService) || Object, (typeof Router !== 'undefined' && Router) || Object])
+        __metadata('design:paramtypes', [(typeof (_a = typeof hero_service_1.HeroService !== 'undefined' && hero_service_1.HeroService) === 'function' && _a) || Object, (typeof (_b = typeof router_1.Router !== 'undefined' && router_1.Router) === 'function' && _b) || Object])
     ], HeroesComponent);
     return HeroesComponent;
+    var _a, _b;
 })();
 exports.HeroesComponent = HeroesComponent;

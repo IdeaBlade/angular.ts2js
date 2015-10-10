@@ -1,8 +1,7 @@
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var ngTestLib = require('angular2/test_lib');
 var ngDomAdapter = require('angular2/src/core/dom/dom_adapter');
@@ -12,6 +11,12 @@ var ngAsync = require('angular2/src/core/facade/async');
 var ngCore = require('angular2/core');
 var ngChangeDetection = require('angular2/src/core/change_detection/change_detection');
 var ngMetadata = require('angular2/src/core/metadata');
+var ngQueryList = require('angular2/src/core/linker/query_list');
+var ngViewContainerRef = require('angular2/src/core/linker/view_container_ref');
+var ngCompiler = require('angular2/src/core/linker/compiler');
+var ngElementRef = require('angular2/src/core/linker/element_ref');
+var ngTemplateRef = require('angular2/src/core/linker/template_ref');
+var ngDomRenderer = require('angular2/src/core/render/dom/dom_renderer');
 var ANCHOR_ELEMENT = ngLang.CONST_EXPR(new ngCore.OpaqueToken('AnchorElement'));
 function main() {
 }
@@ -474,5 +479,5 @@ Object.defineProperty(DirectiveWithPropDecorators.prototype, "onClick",
         ngMetadata.HostListener("click", ["$event.target"]), 
         __metadata('design:type', Function), 
         __metadata('design:paramtypes', [Object]), 
-        __metadata('design:returntype', Object)
+        __metadata('design:returntype', void 0)
     ], DirectiveWithPropDecorators.prototype, "onClick", Object.getOwnPropertyDescriptor(DirectiveWithPropDecorators.prototype, "onClick")));

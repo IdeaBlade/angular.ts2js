@@ -75,9 +75,10 @@ var ShowError = (function () {
             directives: [core_1.NgIf]
         }),
         __param(0, core_1.Host()), 
-        __metadata('design:paramtypes', [(typeof NgFormModel !== 'undefined' && NgFormModel) || Object])
+        __metadata('design:paramtypes', [(typeof (_a = typeof core_1.NgFormModel !== 'undefined' && core_1.NgFormModel) === 'function' && _a) || Object])
     ], ShowError);
     return ShowError;
+    var _a;
 })();
 var ModelDrivenForms = (function () {
     function ModelDrivenForms(fb) {
@@ -103,9 +104,10 @@ var ModelDrivenForms = (function () {
             template: "\n    <h1>Checkout Form (Model Driven)</h1>\n\n    <form (ng-submit)=\"onSubmit()\" [ng-form-model]=\"form\" #f=\"form\">\n      <p>\n        <label for=\"firstName\">First Name</label>\n        <input type=\"text\" id=\"firstName\" ng-control=\"firstName\">\n        <show-error control=\"firstName\" [errors]=\"['required']\"></show-error>\n      </p>\n\n      <p>\n        <label for=\"middleName\">Middle Name</label>\n        <input type=\"text\" id=\"middleName\" ng-control=\"middleName\">\n      </p>\n\n      <p>\n        <label for=\"lastName\">Last Name</label>\n        <input type=\"text\" id=\"lastName\" ng-control=\"lastName\">\n        <show-error control=\"lastName\" [errors]=\"['required']\"></show-error>\n      </p>\n\n      <p>\n        <label for=\"country\">Country</label>\n        <select id=\"country\" ng-control=\"country\">\n          <option *ng-for=\"#c of countries\" [value]=\"c\">{{c}}</option>\n        </select>\n      </p>\n\n      <p>\n        <label for=\"creditCard\">Credit Card</label>\n        <input type=\"text\" id=\"creditCard\" ng-control=\"creditCard\">\n        <show-error control=\"creditCard\" [errors]=\"['required', 'invalidCreditCard']\"></show-error>\n      </p>\n\n      <p>\n        <label for=\"amount\">Amount</label>\n        <input type=\"number\" id=\"amount\" ng-control=\"amount\">\n        <show-error control=\"amount\" [errors]=\"['required']\"></show-error>\n      </p>\n\n      <p>\n        <label for=\"email\">Email</label>\n        <input type=\"email\" id=\"email\" ng-control=\"email\">\n        <show-error control=\"email\" [errors]=\"['required']\"></show-error>\n      </p>\n\n      <p>\n        <label for=\"comments\">Comments</label>\n        <textarea id=\"comments\" ng-control=\"comments\">\n        </textarea>\n      </p>\n\n      <button type=\"submit\" [disabled]=\"!f.form.valid\">Submit</button>\n    </form>\n  ",
             directives: [core_1.FORM_DIRECTIVES, core_1.NgFor, ShowError]
         }), 
-        __metadata('design:paramtypes', [(typeof FormBuilder !== 'undefined' && FormBuilder) || Object])
+        __metadata('design:paramtypes', [(typeof (_a = typeof core_1.FormBuilder !== 'undefined' && core_1.FormBuilder) === 'function' && _a) || Object])
     ], ModelDrivenForms);
     return ModelDrivenForms;
+    var _a;
 })();
 function main() {
     bootstrap_1.bootstrap(ModelDrivenForms);

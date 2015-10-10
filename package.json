@@ -1,7 +1,6 @@
 {
   "name": "angular.ts2js",
   "version": "0.0.1",
-  "private": true,
   "description": "Angular 2 Typescript to Javascript",
   "main": "rewriter.js",
   "scripts": {
@@ -18,7 +17,7 @@
     }
   ],
   "bugs": {
-    "url": ""
+    "url": "https://github.com/ideablade/angular.ts2js/issues"
   },
   "dependencies": {
     "argv": "0.0.2",

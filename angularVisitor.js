@@ -209,7 +209,7 @@ function parseDecorateCall(cePath) {
   var key = args[2];
   assert(decoratorExpr && decoratorExpr.type === 'ArrayExpression', "__decorate arguments should be an array");
   var paramDecorators = [];
-  var classDecorators = [];
+  var classAndFieldDecorators = [];
   decoratorExpr.elements.forEach(function(ele) {
     // ignore _metadata
     if (ele.callee && ele.callee.type === 'Identifier' && ele.callee.name == '__metadata') {
@@ -217,23 +217,18 @@ function parseDecorateCall(cePath) {
     } else if ( ele.callee && ele.callee.name === '__param') {
       paramDecorators.push(ele);
     } else {
-      classDecorators.push(ele);
+      classAndFieldDecorators.push(ele);
     }
   });
-  return { target: target, key: key, classDecorators: classDecorators, paramDecorators: paramDecorators };
+  return { target: target, key: key, classAndFieldDecorators: classAndFieldDecorators, paramDecorators: paramDecorators };
 }
 
 function handleFieldDecorator(cePath, decoratorWrapper, context) {
   // keep track of the field decorators in the 'decoratorWrapperMap'
   // they will be used later in handleClassDecorator.
   var targetName = decoratorWrapper.target.object.name;
-  var map = context.decoratorWrapperMap;
-  var targets = map[targetName];
-  if (targets) {
-    targets.push(decoratorWrapper);
-  } else {
-    map[targetName] = [ decoratorWrapper];
-  }
+  var decoratorWrappers = getValuesArray(context.decoratorWrapperMap, targetName);
+  decoratorWrappers.push(decoratorWrapper);
   cePath.prune();
 }
 
@@ -254,9 +249,6 @@ function handleClassDecorator(cePath, decoratorWrapper, context) {
   cePath.replace(ngCall);
 }
 
-
-
-
 function createNgDsl(className, decoratorWrapper, context) {
 
   var b = astTypes.builders;
@@ -265,7 +257,7 @@ function createNgDsl(className, decoratorWrapper, context) {
   var targetName = decoratorWrapper.target.name;
   var fieldDecoratorWrappers = context.decoratorWrapperMap[targetName];
 
-  decoratorWrapper.classDecorators.forEach(function(decorator) {
+  decoratorWrapper.classAndFieldDecorators.forEach(function(decorator) {
     ngCall = b.callExpression(
       b.memberExpression(
         ngCall,
@@ -273,8 +265,9 @@ function createNgDsl(className, decoratorWrapper, context) {
       ),
       decorator.arguments
     )
-    if (decorator.callee.property.name === 'Component' && fieldDecoratorWrappers) {
-      addProperties(decorator, fieldDecoratorWrappers);
+    var decoratorName = decorator.callee.property.name;
+    if ((decoratorName === 'Component' || decoratorName === 'Directive') && fieldDecoratorWrappers) {
+      addFieldDecorators(decorator, fieldDecoratorWrappers);
     }
   });
 
@@ -285,23 +278,24 @@ function createNgDsl(className, decoratorWrapper, context) {
   return ngCall;
 }
 
-function addProperties(decorator, relatedDecoratorWrappers) {
+function addFieldDecorators(componentDecorator, fieldDecoratorWrappers) {
   var b = astTypes.builders;
   var propMap = {};
-  relatedDecoratorWrappers.forEach(function(decoratorWrapper) {
-    var classDecorator = decoratorWrapper.classDecorators[0];
-    assert(classDecorator.type === 'CallExpression', "__decorate expressions should be CallExpressions");
-    var decoratorPropName = classDecorator.callee.property.name;
+  fieldDecoratorWrappers.forEach(function(decoratorWrapper) {
+
+    var fieldDecorator = decoratorWrapper.classAndFieldDecorators[0];
+    assert(fieldDecorator.type === 'CallExpression', "__decorate expressions should be CallExpressions");
+    var decoratorPropName = fieldDecorator.callee.property.name;
+    if (decoratorWrapper.classAndFieldDecorators.length > 1) {
+      console.log("Unexpected extra decorators found (and ignored) after: " + decoratorPropName);
+    }
     var propName = _componentPropNameMap[decoratorPropName];
     if (!propName) {
-      console.log("Unable to process decorator named: " + decoratorPropName);
+      console.log("Unable to find component property alias for decorator named: " + decoratorPropName);
+      propName = decoratorPropName;
     }
-    var arguments = classDecorator.arguments;
-    var values = propMap[propName];
-    if (!values) {
-      values = [];
-      propMap[propName] = values;
-    }
+    var arguments = fieldDecorator.arguments;
+    var values = getValuesArray(propMap, propName);
     if (arguments.length == 0) {
       values.push(decoratorWrapper.key.value);
     } else {
@@ -314,10 +308,8 @@ function addProperties(decorator, relatedDecoratorWrappers) {
       return b.literal(v);
     });
     var prop = b.property('init', b.identifier(key), b.arrayExpression(valuesExpr));
-    decorator.arguments[0].properties.push(prop);
+    componentDecorator.arguments[0].properties.push(prop);
   });
-  // var prop = b.property('init', b.identifier('inputs'), b.arrayExpression([b.literal('bankName')]));
-  // decorator.arguments[0].properties.push(prop)
 }
 
 function addNgClassDsl(ngCall, ctorFunc, paramDecorators) {
@@ -456,6 +448,15 @@ function getParentOfType(path, type) {
     }
   }
   return nextParent;
+}
+
+function getValuesArray(map, key) {
+  var values = map[key];
+  if (!values) {
+    values = [];
+    map[key] = values;
+  }
+  return values;
 }
 
 module.exports = {

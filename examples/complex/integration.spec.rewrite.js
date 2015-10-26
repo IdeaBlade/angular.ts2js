@@ -452,7 +452,12 @@ var DirectiveThrowingAnError = ng.Directive({ selector: 'directive-throwing-erro
         throw new ngExceptions.BaseException("BOOM");
     }
 });
-var DirectiveWithPropDecorators = ng.Directive({ selector: 'with-prop-decorators' }).Class({
+var DirectiveWithPropDecorators = ng.Directive({
+    selector: 'with-prop-decorators',
+    inputs: ["dirProp: elProp"],
+    outputs: ["event: elEvent"],
+    HostBinding: ["myAttr: attr.my-attr"]
+}).Class({
     constructor: function() {
         this.event = new ngAsync.EventEmitter();
     }
@@ -462,18 +467,6 @@ DirectiveWithPropDecorators.prototype.onClick = function (target) {
     this.target = target;
 };
 DirectiveWithPropDecorators.prototype.fireEvent = function (msg) { ngAsync.ObservableWrapper.callNext(this.event, msg); };
-__decorate([
-    ngMetadata.Input("elProp"), 
-    __metadata('design:type', String)
-], DirectiveWithPropDecorators.prototype, "dirProp");
-__decorate([
-    ngMetadata.Output('elEvent'), 
-    __metadata('design:type', Object)
-], DirectiveWithPropDecorators.prototype, "event");
-__decorate([
-    ngMetadata.HostBinding("attr.my-attr"), 
-    __metadata('design:type', String)
-], DirectiveWithPropDecorators.prototype, "myAttr");
 Object.defineProperty(DirectiveWithPropDecorators.prototype, "onClick",
     __decorate([
         ngMetadata.HostListener("click", ["$event.target"]), 

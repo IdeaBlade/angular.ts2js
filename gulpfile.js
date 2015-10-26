@@ -15,7 +15,15 @@ gulp.task('help', taskListing.withFilters(function(taskName) {
 }));
 
 gulp.task('rewrite', function(done) {
-  var filePath = argv.file || argv.f || argv._[0] || 'examples';
+  var filePath = argv.file || argv.f || (argv._.length > 1 && argv._[1]);
+  if (!filePath) {
+    console.log('must pass in at least one parameter which may be');
+    console.log('  either a folder/file name or ');
+    console.log('  any collection of the following flags ');
+    console.log('    -f[ile]={folder/fileName}  -suffix={suffix} -outDir={output folder} ');
+    return;
+  }
+
   var options;
   if (argv.outDir || argv.suffix) {
     options = {

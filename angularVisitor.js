@@ -28,13 +28,21 @@ var _varNameMap = {
   'angular2_1': 'ng',
   'test_lib': 'testLib'
 };
+var _componentPropNameMap = {
+  'Input': 'inputs',
+  'Output': 'outputs'
+};
 
 function rewrite(source) {
   // HACK: The dummy var is needed to work around the following recast issue.
   // https://github.com/benjamn/recast/issues/191
   var dummy = '\nvar __dummy;';
   var ast = recast.parse(source + dummy);
-  visit(ast);
+  try {
+    visit(ast);
+  } catch (err) {
+    console.log(err);
+  }
   var output = recast.print(ast).code;
   // remove the sourceMappingURL line from the output.
   output = output.replace(/(?:\r\n|\r|\n).*sourceMappingURL=.*/, '');
@@ -49,6 +57,7 @@ function visit(ast) {
     funcMap: {},
     ngMap: { },
     varNameMap: _.extend({}, _varNameMap),
+    annotationMap: {},
     scopeChain: [], // not yet needed.
   };
 
@@ -174,25 +183,37 @@ function processRequireCall(cePath, context) {
 
 // transform a __decorate call expression to use ng DSL call chain.
 function transformDecorateCall(cePath, context) {
-  // replace cePath with a ng DSL chained expression
-  // containing just the non-metadata arguments to __decorate
-  // but keep all other statements around to be spliced in later.
   var annotationInfo = collectDecorateAnnotations(cePath);
-  var ngCall = createNgDsl(annotationInfo.classAnnots, context);
-  var assignNode = getAssignmentIdentifier(cePath);
-  if (!assignNode) {
-    console.log("ERROR: unable to process a __decorate call on line: " + cePath.node.loc.end.line + " of the '.js' file");
-    return;
+  if (cePath.parent.node.type === 'ExpressionStatement') {
+    transformDecorateExpression(cePath, annotationInfo, context);
+  } else {
+    // if we get here we assume we are in an assignment statement
+    // replace cePath with a ng DSL chained expression
+    // containing just the non-metadata arguments to __decorate
+    // but keep all other statements around to be spliced in later.
+    var assignNode = getAssignmentIdentifier(cePath);
+    if (!assignNode) {
+      console.log("ERROR: unable to process a __decorate call on line: " + cePath.node.loc.end.line + " of the '.js' file");
+      return;
+    }
+    var className = assignNode.name;
+    var ngCall = createNgDsl(className, annotationInfo, context);
+    var statements = collectNonDslStatements(cePath);
+    context.ngMap[className] = {ngCall: ngCall, statements: statements};
+    cePath.replace(ngCall);
   }
-  var ctorFunc = context.funcMap[assignNode.name];
-  if (ctorFunc) {
-    ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
+}
+
+function transformDecorateExpression(cePath, annotationInfo, context) {
+  var targetName = annotationInfo.target.object.name;
+  var map = context.annotationMap;
+  var targets = map[targetName];
+  if (targets) {
+    targets.push(annotationInfo);
+  } else {
+    map[targetName] = [ annotationInfo];
   }
-
-  var statements = collectNonDslStatements(cePath);
-
-  context.ngMap[assignNode.name] = { ngCall: ngCall, statements: statements };
-  cePath.replace(ngCall);
+  cePath.prune();
 }
 
 // check if identifier needs to be renamed
@@ -210,6 +231,7 @@ function collectDecorateAnnotations(cePath) {
   var args = cePath.node.arguments;
   var decoratorExpr = args[0];
   var target = args[1];
+  var key = args[2];
   assert(decoratorExpr && decoratorExpr.type === 'ArrayExpression', "__decorate arguments should be an array");
   var paramAnnots = [];
   var classAnnots = [];
@@ -224,15 +246,18 @@ function collectDecorateAnnotations(cePath) {
       classAnnots.push(ele);
     }
   });
-  return { classAnnots: classAnnots, paramAnnots: paramAnnots };
+  return { target: target, key: key, classAnnots: classAnnots, paramAnnots: paramAnnots };
 }
 
-function createNgDsl(classAnnots, context) {
+function createNgDsl(className, annotationInfo, context) {
+
   var b = astTypes.builders;
   var ngName = getMappedVarName('angular2_1', context) || 'ng';
   var ngCall = b.identifier(ngName);
+  var targetName = annotationInfo.target.name;
+  var relatedAnnotInfos = context.annotationMap[targetName];
 
-  classAnnots.forEach(function(decorator) {
+  annotationInfo.classAnnots.forEach(function(decorator) {
     ngCall = b.callExpression(
       b.memberExpression(
         ngCall,
@@ -240,8 +265,52 @@ function createNgDsl(classAnnots, context) {
       ),
       decorator.arguments
     )
+    if (decorator.callee.property.name === 'Component' && relatedAnnotInfos) {
+      addProperties(decorator, relatedAnnotInfos);
+    }
   });
+
+  var ctorFunc = context.funcMap[className];
+  if (ctorFunc) {
+    ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
+  }
   return ngCall;
+}
+
+function addProperties(decorator, relatedAnnotInfos) {
+  var b = astTypes.builders;
+  var propMap = {};
+  relatedAnnotInfos.forEach(function(annotInfo) {
+    // assert annot.type === 'CallExpression'
+    var classAnnot = annotInfo.classAnnots[0];
+    assert(classAnnot.type === 'CallExpression', "__decorate expressions should be CallExpressions");
+    var annotPropName = classAnnot.callee.property.name;
+    var propName = _componentPropNameMap[annotPropName];
+    if (!propName) {
+      console.log("Unable to process decorator named: " + annotPropName);
+    }
+    var arguments = classAnnot.arguments;
+    var values = propMap[propName];
+    if (!values) {
+      values = [];
+      propMap[propName] = values;
+    }
+    if (arguments.length == 0) {
+      values.push(annotInfo.key.value);
+    } else {
+      values.push(annotInfo.key.value + ": " + arguments[0].value);
+    }
+  });
+
+  _.each(propMap, function(valueArray, key) {
+    var valuesExpr = valueArray.map(function(v) {
+      return b.literal(v);
+    });
+    var prop = b.property('init', b.identifier(key), b.arrayExpression(valuesExpr));
+    decorator.arguments[0].properties.push(prop);
+  });
+  // var prop = b.property('init', b.identifier('inputs'), b.arrayExpression([b.literal('bankName')]));
+  // decorator.arguments[0].properties.push(prop)
 }
 
 function addNgClassDsl(ngCall, ctorFunc, paramAnnots) {

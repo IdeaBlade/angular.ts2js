@@ -26,3 +26,37 @@
      }]
    })
  ```
+
+ ## example as TypeScript
+ Component({
+   selector: 'bank-account',
+   template: `
+     Bank Name:
+     Account Id:
+   `
+ })
+ class BankAccount {
+   @Input() bankName: string;
+   @Input('account-id') id: string;
+
+   // this property is not bound, and won't be automatically updated by Angular
+   normalizedBankName: string;
+ }
+
+ ## example as Javascript
+
+ var BankAccount = ng
+   .Component({
+     selector: 'bank-account',
+     template: '<b>{{ bankName }}<b><span>{{ id }}',
+     inputs: [
+       'bankName',
+       'id: accountId'
+     ]
+   })
+   .Class({
+     constructor: function() {
+       this.bankName = null;
+       this.id = null;
+     }
+   });

@@ -7,8 +7,9 @@ Rewrite
     - renames any imported vars coming from an angular base repo 'angular2/' from snake case to camel case.
     - renames angular2/angular2 -> 'ng'
   2) ng DSL translation
-    - handles all class level annotations - @Component, @View, @Directive, @Injectable ...
-    - handles constructor parameter annotations
+    - handles all class level decorations - @Component, @View, @Directive, @Injectable ...
+    - handles constructor parameter decorations
+    - handles field decorations: @Input, @Output + partial handling for others.
   3) remove function def cruft
     - __metadata, __decorate, __param  ( Note: __extend is still needed).
   4) promotes class IIFE's up one level.
@@ -18,9 +19,7 @@ Rewrite
 var recast = require('recast');
 var astTypes = require('ast-types');
 var assert = require('assert');
-
 var _ = require('lodash');
-
 
 
 var _varsToRemove = ['__decorate', '__metadata', '__param' ];
@@ -42,6 +41,7 @@ function rewrite(source) {
     visit(ast);
   } catch (err) {
     console.log(err);
+    console.log(err.stack);
   }
   var output = recast.print(ast).code;
   // remove the sourceMappingURL line from the output.
@@ -57,7 +57,7 @@ function visit(ast) {
     funcMap: {},
     ngMap: { },
     varNameMap: _.extend({}, _varNameMap),
-    annotationMap: {},
+    decoratorWrapperMap: {},
     scopeChain: [], // not yet needed.
   };
 
@@ -183,37 +183,12 @@ function processRequireCall(cePath, context) {
 
 // transform a __decorate call expression to use ng DSL call chain.
 function transformDecorateCall(cePath, context) {
-  var decorateWrapper = parseDecorateCall(cePath);
+  var decoratorWrapper = parseDecorateCall(cePath);
   if (cePath.parent.node.type === 'ExpressionStatement') {
-    transformDecorateExpression(cePath, decorateWrapper, context);
+    handleFieldDecorator(cePath, decoratorWrapper, context);
   } else {
-    // if we get here we assume we are in an assignment statement
-    // replace cePath with a ng DSL chained expression
-    // containing just the non-metadata arguments to __decorate
-    // but keep all other statements around to be spliced in later.
-    var assignNode = getAssignmentIdentifier(cePath);
-    if (!assignNode) {
-      console.log("ERROR: unable to process a __decorate call on line: " + cePath.node.loc.end.line + " of the '.js' file");
-      return;
-    }
-    var className = assignNode.name;
-    var ngCall = createNgDsl(className, decorateWrapper, context);
-    var statements = collectNonDslStatements(cePath);
-    context.ngMap[className] = {ngCall: ngCall, statements: statements};
-    cePath.replace(ngCall);
+    handleClassDecorator(cePath, decoratorWrapper, context);
   }
-}
-
-function transformDecorateExpression(cePath, decorateWrapper, context) {
-  var targetName = decorateWrapper.target.object.name;
-  var map = context.annotationMap;
-  var targets = map[targetName];
-  if (targets) {
-    targets.push(decorateWrapper);
-  } else {
-    map[targetName] = [ decorateWrapper];
-  }
-  cePath.prune();
 }
 
 // check if identifier needs to be renamed
@@ -233,31 +208,64 @@ function parseDecorateCall(cePath) {
   var target = args[1];
   var key = args[2];
   assert(decoratorExpr && decoratorExpr.type === 'ArrayExpression', "__decorate arguments should be an array");
-  var paramAnnots = [];
-  var classAnnots = [];
+  var paramDecorators = [];
+  var classDecorators = [];
   decoratorExpr.elements.forEach(function(ele) {
     // ignore _metadata
     if (ele.callee && ele.callee.type === 'Identifier' && ele.callee.name == '__metadata') {
       return;
-      // remove but keep track of parameter annotations
     } else if ( ele.callee && ele.callee.name === '__param') {
-      paramAnnots.push(ele);
+      paramDecorators.push(ele);
     } else {
-      classAnnots.push(ele);
+      classDecorators.push(ele);
     }
   });
-  return { target: target, key: key, classAnnots: classAnnots, paramAnnots: paramAnnots };
+  return { target: target, key: key, classDecorators: classDecorators, paramDecorators: paramDecorators };
 }
 
-function createNgDsl(className, decorateWrapper, context) {
+function handleFieldDecorator(cePath, decoratorWrapper, context) {
+  // keep track of the field decorators in the 'decoratorWrapperMap'
+  // they will be used later in handleClassDecorator.
+  var targetName = decoratorWrapper.target.object.name;
+  var map = context.decoratorWrapperMap;
+  var targets = map[targetName];
+  if (targets) {
+    targets.push(decoratorWrapper);
+  } else {
+    map[targetName] = [ decoratorWrapper];
+  }
+  cePath.prune();
+}
+
+function handleClassDecorator(cePath, decoratorWrapper, context) {
+  // if we get here we assume we are in an assignment statement
+  // replace cePath with a ng DSL chained expression
+  // containing just the non-metadata arguments to __decorate
+  // but keep all other statements around to be spliced in later.
+  var assignNode = getAssignmentIdentifier(cePath);
+  if (!assignNode) {
+    console.log("ERROR: unable to process a __decorate call on line: " + cePath.node.loc.end.line + " of the '.js' file");
+    return;
+  }
+  var className = assignNode.name;
+  var ngCall = createNgDsl(className, decoratorWrapper, context);
+  var statements = collectNonDslStatements(cePath);
+  context.ngMap[className] = {ngCall: ngCall, statements: statements};
+  cePath.replace(ngCall);
+}
+
+
+
+
+function createNgDsl(className, decoratorWrapper, context) {
 
   var b = astTypes.builders;
   var ngName = getMappedVarName('angular2_1', context) || 'ng';
   var ngCall = b.identifier(ngName);
-  var targetName = decorateWrapper.target.name;
-  var relatedAnnotInfos = context.annotationMap[targetName];
+  var targetName = decoratorWrapper.target.name;
+  var fieldDecoratorWrappers = context.decoratorWrapperMap[targetName];
 
-  decorateWrapper.classAnnots.forEach(function(decorator) {
+  decoratorWrapper.classDecorators.forEach(function(decorator) {
     ngCall = b.callExpression(
       b.memberExpression(
         ngCall,
@@ -265,40 +273,39 @@ function createNgDsl(className, decorateWrapper, context) {
       ),
       decorator.arguments
     )
-    if (decorator.callee.property.name === 'Component' && relatedAnnotInfos) {
-      addProperties(decorator, relatedAnnotInfos);
+    if (decorator.callee.property.name === 'Component' && fieldDecoratorWrappers) {
+      addProperties(decorator, fieldDecoratorWrappers);
     }
   });
 
   var ctorFunc = context.funcMap[className];
   if (ctorFunc) {
-    ngCall = addNgClassDsl(ngCall, ctorFunc, decorateWrapper.paramAnnots);
+    ngCall = addNgClassDsl(ngCall, ctorFunc, decoratorWrapper.paramDecorators);
   }
   return ngCall;
 }
 
-function addProperties(decorator, relatedAnnotInfos) {
+function addProperties(decorator, relatedDecoratorWrappers) {
   var b = astTypes.builders;
   var propMap = {};
-  relatedAnnotInfos.forEach(function(annotInfo) {
-    // assert annot.type === 'CallExpression'
-    var classAnnot = annotInfo.classAnnots[0];
-    assert(classAnnot.type === 'CallExpression', "__decorate expressions should be CallExpressions");
-    var annotPropName = classAnnot.callee.property.name;
-    var propName = _componentPropNameMap[annotPropName];
+  relatedDecoratorWrappers.forEach(function(decoratorWrapper) {
+    var classDecorator = decoratorWrapper.classDecorators[0];
+    assert(classDecorator.type === 'CallExpression', "__decorate expressions should be CallExpressions");
+    var decoratorPropName = classDecorator.callee.property.name;
+    var propName = _componentPropNameMap[decoratorPropName];
     if (!propName) {
-      console.log("Unable to process decorator named: " + annotPropName);
+      console.log("Unable to process decorator named: " + decoratorPropName);
     }
-    var arguments = classAnnot.arguments;
+    var arguments = classDecorator.arguments;
     var values = propMap[propName];
     if (!values) {
       values = [];
       propMap[propName] = values;
     }
     if (arguments.length == 0) {
-      values.push(annotInfo.key.value);
+      values.push(decoratorWrapper.key.value);
     } else {
-      values.push(annotInfo.key.value + ": " + arguments[0].value);
+      values.push(decoratorWrapper.key.value + ": " + arguments[0].value);
     }
   });
 
@@ -313,10 +320,10 @@ function addProperties(decorator, relatedAnnotInfos) {
   // decorator.arguments[0].properties.push(prop)
 }
 
-function addNgClassDsl(ngCall, ctorFunc, paramAnnots) {
+function addNgClassDsl(ngCall, ctorFunc, paramDecorators) {
   var b = astTypes.builders;
   var ctorPropExpr = b.functionExpression(null, ctorFunc.node.params, ctorFunc.node.body);
-  ctorPropExpr = addParamAnnots(ctorPropExpr, paramAnnots);
+  ctorPropExpr = addParamDecorators(ctorPropExpr, paramDecorators);
 
   ngCall = b.callExpression(
     b.memberExpression(
@@ -335,19 +342,19 @@ function addNgClassDsl(ngCall, ctorFunc, paramAnnots) {
   return ngCall;
 }
 
-function addParamAnnots(ctorPropExpr, paramAnnots) {
-  if (paramAnnots.length === 0) return ctorPropExpr;
+function addParamDecorators(ctorPropExpr, paramDecorators) {
+  if (paramDecorators.length === 0) return ctorPropExpr;
   var b = astTypes.builders;
   var paramItems = [];
-  paramAnnots.forEach(function(pe) {
-    var index = pe.arguments[0].value;
-    var expr = pe.arguments[1];
+  paramDecorators.forEach(function(pd) {
+    var index = pd.arguments[0].value;
+    var expr = pd.arguments[1];
     if (expr.type === 'CallExpression') {
       expr = b.newExpression(expr.callee, expr.arguments);
     }
     if (paramItems[index]) {
-      // if there is already parameter annotation defined for this index
-      // create an array and add this annotation to the end.
+      // if there is already parameter decorator defined for this index
+      // create an array and add this decoration to the end.
       if (!Array.isArray(paramItems[index])) {
         // need another arrayExpression here
         paramItems[index] = [ paramItems[index]];
@@ -450,8 +457,6 @@ function getParentOfType(path, type) {
   }
   return nextParent;
 }
-
-
 
 module.exports = {
   rewrite: rewrite

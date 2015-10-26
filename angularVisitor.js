@@ -183,9 +183,9 @@ function processRequireCall(cePath, context) {
 
 // transform a __decorate call expression to use ng DSL call chain.
 function transformDecorateCall(cePath, context) {
-  var annotationInfo = collectDecorateAnnotations(cePath);
+  var decorateWrapper = parseDecorateCall(cePath);
   if (cePath.parent.node.type === 'ExpressionStatement') {
-    transformDecorateExpression(cePath, annotationInfo, context);
+    transformDecorateExpression(cePath, decorateWrapper, context);
   } else {
     // if we get here we assume we are in an assignment statement
     // replace cePath with a ng DSL chained expression
@@ -197,21 +197,21 @@ function transformDecorateCall(cePath, context) {
       return;
     }
     var className = assignNode.name;
-    var ngCall = createNgDsl(className, annotationInfo, context);
+    var ngCall = createNgDsl(className, decorateWrapper, context);
     var statements = collectNonDslStatements(cePath);
     context.ngMap[className] = {ngCall: ngCall, statements: statements};
     cePath.replace(ngCall);
   }
 }
 
-function transformDecorateExpression(cePath, annotationInfo, context) {
-  var targetName = annotationInfo.target.object.name;
+function transformDecorateExpression(cePath, decorateWrapper, context) {
+  var targetName = decorateWrapper.target.object.name;
   var map = context.annotationMap;
   var targets = map[targetName];
   if (targets) {
-    targets.push(annotationInfo);
+    targets.push(decorateWrapper);
   } else {
-    map[targetName] = [ annotationInfo];
+    map[targetName] = [ decorateWrapper];
   }
   cePath.prune();
 }
@@ -227,7 +227,7 @@ function renameIdentifierIfNeeded(idPath, context) {
 
 // 2nd order helper functions
 
-function collectDecorateAnnotations(cePath) {
+function parseDecorateCall(cePath) {
   var args = cePath.node.arguments;
   var decoratorExpr = args[0];
   var target = args[1];
@@ -249,15 +249,15 @@ function collectDecorateAnnotations(cePath) {
   return { target: target, key: key, classAnnots: classAnnots, paramAnnots: paramAnnots };
 }
 
-function createNgDsl(className, annotationInfo, context) {
+function createNgDsl(className, decorateWrapper, context) {
 
   var b = astTypes.builders;
   var ngName = getMappedVarName('angular2_1', context) || 'ng';
   var ngCall = b.identifier(ngName);
-  var targetName = annotationInfo.target.name;
+  var targetName = decorateWrapper.target.name;
   var relatedAnnotInfos = context.annotationMap[targetName];
 
-  annotationInfo.classAnnots.forEach(function(decorator) {
+  decorateWrapper.classAnnots.forEach(function(decorator) {
     ngCall = b.callExpression(
       b.memberExpression(
         ngCall,
@@ -272,7 +272,7 @@ function createNgDsl(className, annotationInfo, context) {
 
   var ctorFunc = context.funcMap[className];
   if (ctorFunc) {
-    ngCall = addNgClassDsl(ngCall, ctorFunc, annotationInfo.paramAnnots);
+    ngCall = addNgClassDsl(ngCall, ctorFunc, decorateWrapper.paramAnnots);
   }
   return ngCall;
 }
